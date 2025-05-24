@@ -1,0 +1,152 @@
+.table {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    width: 100%;
+}
+
+.fund-name {
+    min-width: 200px;
+    white-space: normal;
+    font-weight: 500;
+}
+
+.fund-name-column {
+    min-width: 300px !important;  /* Match fund-name class */
+    width: 300px !important;
+}
+
+.fund-name-cell {
+    max-width: 300px;  /* Ensure consistent width */
+    padding-right: 1rem !important;
+}
+
+.table thead th {
+    border-bottom: 2px solid rgba(0, 0, 0, 0.1);
+    font-weight: 600;
+    padding: 1rem;
+    white-space: nowrap;
+    position: sticky;
+    top: 0;
+    background: #f8f9fa;
+    z-index: 1;
+}
+
+.table thead th small {
+    display: block;
+    font-size: 0.75rem;
+    margin-top: 0.25rem;
+    font-weight: normal;
+}
+
+.sortable {
+    cursor: pointer;
+    position: relative;
+    padding-right: 1.5rem !important;
+}
+
+.sortable i {
+    font-size: 0.8rem;
+    margin-left: 0.3rem;
+    opacity: 0.5;
+    transition: opacity 0.2s ease;
+}
+
+.sortable:hover i {
+    opacity: 1;
+}
+
+.sortable.asc i,
+.sortable.desc i {
+    opacity: 1;
+}
+
+.table tbody td {
+    padding: 1rem;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
+.fund-row {
+    transition: background-color 0.2s ease-in-out;
+}
+
+.fund-row:hover {
+    background-color: #f8f9fa;
+}
+
+.navbar {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-bottom: 2rem;
+}
+
+.navbar-text {
+    color: rgba(255, 255, 255, 0.9) !important;
+    font-size: 0.9rem;
+    padding: 0.5rem 1rem;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+}
+
+.footer {
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+    margin-top: 2rem;
+}
+
+/* Make table responsive */
+.table-responsive {
+    overflow-x: visible; /* Remove horizontal scroll */
+    -webkit-overflow-scrolling: auto;
+    margin: 0; /* Remove negative margins */
+    padding: 0; /* Remove extra padding */
+}
+
+/* Style for positive/negative values */
+.text-success {
+    color: #198754 !important;
+}
+
+.text-danger {
+    color: #dc3545 !important;
+}
+
+/* Ensure all columns have minimum width */
+.returns-column {
+    min-width: 120px;
+}
+
+.amfi-code-column {
+    min-width: 100px;
+}
+
+.nav-column {
+    min-width: 120px;
+}
+
+/* Add horizontal scroll indicator */
+.table-wrapper {
+    width: 100%;
+    overflow: visible; /* Allow table to expand fully */
+}
+
+/* Style for positive/negative values */
+.text-success {
+    color: #198754 !important;
+}
+
+.text-danger {
+    color: #dc3545 !important;
+}
+
+/* Ensure all columns have minimum width */
+.returns-column {
+    min-width: 120px;
+}
+
+.amfi-code-column {
+    min-width: 100px;
+}
+
+.nav-column {
+    min-width: 120px;
+} 
