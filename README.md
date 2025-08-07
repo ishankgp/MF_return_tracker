@@ -1,214 +1,217 @@
-# Mutual Fund Returns Tracker - Optimized
+# 📈 Mutual Fund Returns Tracker
 
-A high-performance web application for tracking mutual fund returns with real-time data fetching and intelligent caching.
+A modern web application to track and analyze mutual fund performance with real-time data fetching, beautiful UI, and automated daily updates.
 
-## 🚀 Key Optimizations
+![Fund Performance Dashboard](screenshots/frontend_table.jpg)
 
-### Performance Improvements
-- **Smart Dependency Checking**: Batch file now only installs dependencies when needed
-- **Enhanced Caching**: Increased cache TTL from 5 to 10 minutes for better performance
-- **Improved Rate Limiting**: Increased from 2 to 3 requests per second
-- **Better Connection Pooling**: Optimized HTTP connection settings
-- **Memory Cache Optimization**: Increased cache size and TTL
+## ✨ Features
 
-### Code Optimizations
-- **Centralized Configuration**: All settings in `config.py`
-- **Better Error Handling**: Comprehensive error handling throughout
-- **Improved Logging**: Structured logging with file rotation
-- **Production Ready**: Docker and Gunicorn support
+- **Real-time Data Fetching**: Automatically fetches latest NAV and returns data from mutual fund APIs
+- **Modern React Frontend**: Clean, responsive UI built with Next.js and Tailwind CSS
+- **Smart Caching**: Redis-backed caching with in-memory fallback for optimal performance
+- **Advanced Filtering**: Search and filter funds by name or category
+- **Interactive Details**: Click any fund to see detailed performance metrics and charts
+- **Export Functionality**: Download fund data as CSV for further analysis
+- **Notes Management**: Add, edit, and delete personal notes about funds
+- **Auto-refresh**: Scheduled daily updates at 11 AM (configurable)
+- **Performance Tracking**: Track returns across multiple timeframes (1D, 1W, 1M, 3M, 6M, 1Y, 3Y, 5Y)
 
-## 📦 Installation & Usage
+## 🚀 Quick Start
 
-### Quick Start (Development)
+### Prerequisites
+
+- Python 3.8+ 
+- Node.js 16+
+- Redis (optional, for caching)
+
+### One-Click Setup & Run
+
+Simply double-click the `quick-start.bat` file to launch both backend and frontend automatically.
+
+Or run from command line:
 ```bash
-# Run the optimized batch file
-start-mf-tracker.bat
+.\quick-start.bat
 ```
 
-### Production Deployment
+This will:
+- Start the Flask backend at http://127.0.0.1:5000
+- Start the Next.js frontend at http://localhost:3000
+- Open your browser automatically
+
+## 📦 Manual Installation
+
+### Backend Setup
+
+1. Create virtual environment:
 ```bash
-# Using Docker Compose (recommended for Linux/macOS)
-docker-compose up -d
-
-# Using production batch file (Windows-compatible)
-start-production.bat
-
-# Or run the production server directly
-python production_server.py
-```
-
-### Manual Setup
-```bash
-# Create virtual environment
 python -m venv venv
-venv\Scripts\activate
+venv\Scripts\activate  # On Windows
+```
 
-# Install dependencies (only if needed)
+2. Install dependencies:
+```bash
 pip install -r requirements.txt
+```
 
-# Run the application
+3. Run Flask server:
+```bash
 python app.py
 ```
 
-## 🏗️ Architecture
+### Frontend Setup
 
-### Backend (Flask)
-- **Async Data Fetching**: Uses aiohttp for concurrent API calls
-- **Multi-level Caching**: Redis + in-memory cache
-- **Rate Limiting**: Prevents API abuse
-- **Health Monitoring**: Built-in health checks
-- **Cross-Platform**: Windows-compatible with Waitress server
+1. Navigate to frontend directory:
+```bash
+cd v0-mf-return-tracker-frontend
+```
 
-### Frontend (Next.js)
-- **Modern UI**: Built with Tailwind CSS and shadcn/ui
-- **Real-time Updates**: Auto-refresh functionality
-- **Responsive Design**: Mobile-friendly interface
+2. Install dependencies:
+```bash
+npm install
+```
+
+3. Run development server:
+```bash
+npm run dev
+```
+
+## 📁 Project Structure
+
+```
+mutual_funds/
+├── app.py                    # Flask backend server
+├── fetch_mf_returns.py       # Data fetching logic
+├── config.py                 # Configuration settings
+├── requirements.txt          # Python dependencies
+├── quick-start.bat          # One-click launcher
+├── start-mf-tracker.bat     # Backend starter with checks
+├── v0-mf-return-tracker-frontend/
+│   ├── app/                 # Next.js app directory
+│   │   ├── page.tsx         # Main dashboard page
+│   │   └── api/             # API routes
+│   ├── components/          # React components
+│   │   ├── fund-details-dialog.tsx
+│   │   ├── notes-section.tsx
+│   │   └── ui/              # Reusable UI components
+│   ├── services/            # API service layer
+│   └── package.json         # Node dependencies
+├── templates/               # Flask HTML templates
+├── static/                  # Static assets
+└── logs/                    # Application logs
+```
 
 ## 🔧 Configuration
 
-### Environment Variables
-```bash
-# Flask Settings
-FLASK_ENV=development|production
-DEBUG=True|False
-SECRET_KEY=your-secret-key
+### Adding/Modifying Funds
 
-# Redis Settings
+Edit the `funds` list in `fetch_mf_returns.py`:
+
+```python
+funds = [
+    {"name": "Fund Name", "code": "FUND_CODE"},
+    # Add more funds here
+]
+```
+
+### Setting up Daily Auto-refresh (11 AM)
+
+#### Windows Task Scheduler
+
+1. Open Task Scheduler
+2. Create Basic Task
+3. Set trigger: Daily at 11:00 AM
+4. Set action: Start `quick-start.bat`
+5. Enable "Run whether user is logged on or not"
+
+#### Or use PowerShell to create scheduled task:
+
+```powershell
+$action = New-ScheduledTaskAction -Execute "D:\Github clones\mutual_funds\quick-start.bat"
+$trigger = New-ScheduledTaskTrigger -Daily -At 11:00AM
+Register-ScheduledTask -TaskName "MutualFundTracker" -Action $action -Trigger $trigger
+```
+
+## 🔍 API Endpoints
+
+### Backend (Flask)
+
+- `GET /` - Main dashboard (HTML)
+- `GET /api/funds` - Get all fund data (JSON)
+- `POST /api/refresh` - Force data refresh
+- `GET /health` - Health check endpoint
+
+### Frontend API Routes
+
+- `GET /api/funds` - Proxies to Flask backend
+- `POST /api/refresh` - Triggers data refresh
+
+## 💡 Usage Tips
+
+1. **Quick Search**: Use the search bar to find specific funds instantly
+2. **Category Filter**: Filter by Large Cap, Mid Cap, Small Cap, Liquid, or Debt funds
+3. **Sort Columns**: Click any column header to sort by that metric
+4. **Export Data**: Click the download button to export current view as CSV
+5. **Add Notes**: Use the Notes section to track your observations
+6. **View Details**: Click any fund row to see detailed performance charts
+
+## 🛠️ Troubleshooting
+
+### Backend won't start
+- Ensure Python 3.8+ is installed: `python --version`
+- Check if port 5000 is free: `netstat -an | findstr :5000`
+- Verify all dependencies: `pip install -r requirements.txt`
+
+### Frontend won't start
+- Ensure Node.js 16+ is installed: `node --version`
+- Clear npm cache: `npm cache clean --force`
+- Reinstall dependencies: `rm -rf node_modules && npm install`
+
+### Data not updating
+- Check internet connection
+- Verify mutual fund API is accessible
+- Clear Redis cache (if using): `redis-cli FLUSHALL`
+- Check logs in `logs/app.log`
+
+### CORS errors
+- Ensure backend is running on http://127.0.0.1:5000
+- Check CORS is enabled in `app.py`
+
+## 🔐 Environment Variables
+
+Create a `.env` file for custom configuration:
+
+```env
+FLASK_ENV=development
 REDIS_URL=redis://localhost:6379
-REDIS_TTL=600
-
-# API Settings
-API_TIMEOUT=15
-API_RATE_LIMIT=3
-API_RATE_PERIOD=1
-
-# Performance Settings
-MAX_CONCURRENT_REQUESTS=10
-CONNECTION_POOL_SIZE=5
+LOG_LEVEL=INFO
 ```
 
-### Cache Configuration
-- **Memory Cache**: 200 items, 10-minute TTL
-- **Redis Cache**: 10-minute TTL (if available)
-- **API Cache**: 10-minute TTL per fund
+## 📊 Performance
 
-## 📊 Performance Metrics
-
-### Before Optimization
-- Dependencies installed every startup
-- 5-minute cache TTL
-- 2 requests/second rate limit
-- Basic error handling
-
-### After Optimization
-- Smart dependency checking
-- 10-minute cache TTL
-- 3 requests/second rate limit
-- Comprehensive error handling
-- Production-ready deployment
-
-## 🐳 Docker Deployment
-
-### Build and Run
-```bash
-# Build the image
-docker build -t mf-tracker .
-
-# Run with Docker Compose
-docker-compose up -d
-
-# Check logs
-docker-compose logs -f app
-```
-
-### Health Checks
-- Application: `http://localhost:5000/health`
-- Redis: Automatic health monitoring
-
-## 📈 Monitoring
-
-### Health Endpoint
-```bash
-curl http://localhost:5000/health
-```
-
-Response:
-```json
-{
-  "status": "healthy",
-  "timestamp": "2024-01-01T12:00:00",
-  "redis_connected": true,
-  "funds_count": 9,
-  "cache_size": 9
-}
-```
-
-### Log Files
-- Application logs: `logs/app.log`
-- Production logs: `logs/production.log`
-- Performance metrics: `logs/performance_metrics.json`
-
-## 🔄 API Endpoints
-
-- `GET /` - Main dashboard
-- `GET /api/funds` - Fund data API
-- `GET /api/refresh` - Force data refresh
-- `GET /health` - Health check
-- `GET /favicon.ico` - Favicon
-
-## 🛠️ Development
-
-### Running Tests
-```bash
-# Install test dependencies
-pip install pytest pytest-asyncio
-
-# Run tests
-pytest
-```
-
-### Code Quality
-```bash
-# Install linting tools
-pip install flake8 black
-
-# Format code
-black .
-
-# Lint code
-flake8 .
-```
-
-## 📝 Changelog
-
-### v2.0.0 - Optimization Release
-- ✅ Smart dependency installation
-- ✅ Enhanced caching strategy
-- ✅ Improved performance
-- ✅ Production deployment support
-- ✅ Docker containerization
-- ✅ Comprehensive monitoring
-- ✅ Better error handling
+- **Caching**: 10-minute TTL for fund data
+- **Async fetching**: Parallel API calls for faster data retrieval
+- **Optimized rendering**: React memo and virtualization for large datasets
+- **Lazy loading**: Components load on-demand
 
 ## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
-## 📄 License
+## 📝 License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is open source and available under the MIT License.
 
-## 🆘 Support
+## 🙏 Acknowledgments
 
-For issues and questions:
-1. Check the health endpoint
-2. Review the logs
-3. Open an issue on GitHub
+- Built with Flask, Next.js, and Tailwind CSS
+- Uses public mutual fund APIs for data
+- Redis for high-performance caching
+- shadcn/ui for beautiful components
 
 ---
 
-**Note**: The batch file now only installs dependencies when they're missing, significantly reducing startup time on subsequent runs.
+**Note**: This application is for educational and personal use. Always verify financial data from official sources before making investment decisions.
