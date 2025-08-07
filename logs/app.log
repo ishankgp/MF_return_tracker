@@ -1,0 +1,16 @@
+2025-07-13 16:58:04,208 - app - INFO - Redis connection established
+2025-07-13 16:58:04,210 - __main__ - INFO - Starting production server on 127.0.0.1:5000
+2025-07-13 16:58:04,210 - __main__ - INFO - Using 4 threads
+2025-07-13 16:58:04,210 - waitress - INFO - Serving on http://127.0.0.1:5000
+2025-07-13 16:58:25,852 - app - INFO - Starting to fetch fund data
+2025-07-13 16:58:26,295 - fetch_mf_returns - INFO - Successfully fetched and cached data for Bandhan Small Cap Fund
+2025-07-13 16:58:26,388 - fetch_mf_returns - INFO - Successfully fetched and cached data for Quant Small Cap Fund
+2025-07-13 16:58:26,449 - fetch_mf_returns - INFO - Successfully fetched and cached data for Nippon India Small Cap Fund
+2025-07-13 16:58:27,164 - fetch_mf_returns - INFO - Successfully fetched and cached data for Motilal Oswal Midcap 30 Fund
+2025-07-13 16:58:27,223 - fetch_mf_returns - INFO - Successfully fetched and cached data for Parag Parikh Flexi Cap Direct-Growth
+2025-07-13 16:58:27,291 - fetch_mf_returns - INFO - Successfully fetched and cached data for Quant Mid Cap Fund
+2025-07-13 16:58:28,115 - fetch_mf_returns - INFO - Successfully fetched and cached data for Edelweiss Mid Cap Fund
+2025-07-13 16:58:28,201 - fetch_mf_returns - INFO - Successfully fetched and cached data for Nippon India Growth Fund
+2025-07-13 16:58:28,289 - fetch_mf_returns - INFO - Successfully fetched and cached data for Quant ELSS Tax Saver Direct-Growth
+2025-07-13 16:58:28,290 - app - INFO - Successfully fetched data for 9 funds
+2025-07-13 16:58:28,291 - app - INFO - Successfully prepared data for template rendering: 9 funds

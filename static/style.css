@@ -1,10 +1,16 @@
+/* Optimized CSS for Mutual Fund Returns Tracker */
+
+/* Base styles */
 .table {
     background: white;
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
 }
 
+/* Fund name styling */
 .fund-name {
     min-width: 200px;
     white-space: normal;
@@ -12,15 +18,16 @@
 }
 
 .fund-name-column {
-    min-width: 300px !important;  /* Match fund-name class */
+    min-width: 300px !important;
     width: 300px !important;
 }
 
 .fund-name-cell {
-    max-width: 300px;  /* Ensure consistent width */
+    max-width: 300px;
     padding-right: 1rem !important;
 }
 
+/* Table header styling */
 .table thead th {
     border-bottom: 2px solid rgba(0, 0, 0, 0.1);
     font-weight: 600;
@@ -39,10 +46,16 @@
     font-weight: normal;
 }
 
+/* Sortable columns */
 .sortable {
     cursor: pointer;
     position: relative;
     padding-right: 1.5rem !important;
+    transition: background-color 0.2s ease;
+}
+
+.sortable:hover {
+    background-color: #e9ecef;
 }
 
 .sortable i {
@@ -61,10 +74,12 @@
     opacity: 1;
 }
 
+/* Table body styling */
 .table tbody td {
     padding: 1rem;
     vertical-align: middle;
     white-space: nowrap;
+    border: none;
 }
 
 .fund-row {
@@ -75,6 +90,7 @@
     background-color: #f8f9fa;
 }
 
+/* Navigation bar */
 .navbar {
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     margin-bottom: 2rem;
@@ -88,57 +104,27 @@
     border-radius: 4px;
 }
 
+/* Footer */
 .footer {
     border-top: 1px solid rgba(0, 0, 0, 0.1);
     margin-top: 2rem;
+    box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.1);
 }
 
-/* Make table responsive */
+/* Table responsiveness */
 .table-responsive {
-    overflow-x: visible; /* Remove horizontal scroll */
+    overflow-x: visible;
     -webkit-overflow-scrolling: auto;
-    margin: 0; /* Remove negative margins */
-    padding: 0; /* Remove extra padding */
+    margin: 0;
+    padding: 0;
 }
 
-/* Style for positive/negative values */
-.text-success {
-    color: #198754 !important;
-}
-
-.text-danger {
-    color: #dc3545 !important;
-}
-
-/* Ensure all columns have minimum width */
-.returns-column {
-    min-width: 120px;
-}
-
-.amfi-code-column {
-    min-width: 100px;
-}
-
-.nav-column {
-    min-width: 120px;
-}
-
-/* Add horizontal scroll indicator */
 .table-wrapper {
     width: 100%;
-    overflow: visible; /* Allow table to expand fully */
+    overflow: visible;
 }
 
-/* Style for positive/negative values */
-.text-success {
-    color: #198754 !important;
-}
-
-.text-danger {
-    color: #dc3545 !important;
-}
-
-/* Ensure all columns have minimum width */
+/* Column widths */
 .returns-column {
     min-width: 120px;
 }
@@ -149,4 +135,120 @@
 
 .nav-column {
     min-width: 120px;
+}
+
+/* Text colors for returns */
+.text-success {
+    color: #198754 !important;
+}
+
+.text-danger {
+    color: #dc3545 !important;
+}
+
+/* Table cell optimization */
+.table td, .table th {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.table td:not(:last-child), .table th:not(:last-child) {
+    padding-right: 16px !important;
+}
+
+/* Loading states */
+.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.refresh-btn {
+    transition: transform 0.3s ease;
+}
+
+.refresh-btn:active {
+    transform: rotate(180deg);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .fund-name-column {
+        min-width: 200px !important;
+        width: 200px !important;
+    }
+    
+    .fund-name {
+        min-width: 150px;
+        font-size: 0.9rem;
+    }
+    
+    .returns-column {
+        min-width: 80px;
+    }
+    
+    .table thead th,
+    .table tbody td {
+        padding: 8px 4px;
+        font-size: 0.8rem;
+    }
+    
+    .navbar-brand {
+        font-size: 1rem;
+    }
+    
+    .navbar-text {
+        font-size: 0.8rem;
+        padding: 0.3rem 0.5rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .fund-name-column {
+        min-width: 150px !important;
+        width: 150px !important;
+    }
+    
+    .fund-name {
+        min-width: 120px;
+        font-size: 0.8rem;
+    }
+    
+    .returns-column {
+        min-width: 60px;
+    }
+    
+    .table thead th,
+    .table tbody td {
+        padding: 6px 2px;
+        font-size: 0.7rem;
+    }
+    
+    .navbar-brand {
+        font-size: 0.9rem;
+    }
+    
+    .navbar-text {
+        display: none;
+    }
+}
+
+/* Print styles */
+@media print {
+    .navbar,
+    .footer,
+    .refresh-btn,
+    .notes-section {
+        display: none !important;
+    }
+    
+    .table {
+        box-shadow: none;
+        border: 1px solid #ddd;
+    }
+    
+    .table thead th {
+        background-color: #f8f9fa !important;
+        -webkit-print-color-adjust: exact;
+    }
 } 

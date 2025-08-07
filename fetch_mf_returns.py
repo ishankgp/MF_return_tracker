@@ -1,10 +1,19 @@
-import requests
+import aiohttp
+import asyncio
 import pandas as pd
 from datetime import datetime, timedelta
 import time
 import logging
+from asyncio_throttle import Throttler
+from cachetools import TTLCache
+import json
+import os
+import traceback
 
 logger = logging.getLogger(__name__)
+
+# Cache for API responses (10 minutes TTL for better performance)
+api_cache = TTLCache(maxsize=200, ttl=600)
 
 # List of funds with their AMFI codes
 funds = [
@@ -20,7 +29,7 @@ funds = [
 ]
 
 def find_closest_nav(nav_data, target_date):
-    """Find the NAV closest to the target date"""
+    """Find the NAV closest to the target date with improved performance"""
     try:
         target_date_str = target_date.strftime("%d-%m-%Y")
         
@@ -46,101 +55,190 @@ def find_closest_nav(nav_data, target_date):
         logger.error(f"Error finding closest NAV: {str(e)}")
         return None, None
 
-def fetch_fund_data(fund):
+async def fetch_fund_data_async(session, fund, throttler):
+    """Fetch fund data asynchronously with rate limiting and improved caching"""
+    cache_key = f"fund_{fund['code']}"
+    
+    # Check cache first
+    if cache_key in api_cache:
+        logger.info(f"Cache hit for {fund['name']}")
+        return api_cache[cache_key]
+    
     url = f"https://api.mfapi.in/mf/{fund['code']}"
+    
     try:
-        # Add timeout to prevent hanging
-        response = requests.get(url, timeout=10)
-        response.raise_for_status()  # Raise an exception for bad status codes
-        data = response.json()
-        
-        if "data" not in data:
-            logger.error(f"Invalid response format for {fund['name']}: 'data' key missing")
-            return None
-        
-        nav_data = data["data"]
-        if not nav_data:
-            logger.error(f"Empty NAV data for {fund['name']}")
-            return None
-            
-        try:
-            current_nav = float(nav_data[0]["nav"])
-            current_date = datetime.strptime(nav_data[0]["date"], "%d-%m-%Y")
-        except (ValueError, KeyError, IndexError) as e:
-            logger.error(f"Error parsing current NAV data for {fund['name']}: {str(e)}")
-            return None
-        
-        # Calculate returns for different periods
-        returns = {}
-        dates = {}
-        periods = {
-            "1day": 1,
-            "1week": 7,
-            "1month": 30,
-            "3month": 90,
-            "6month": 180,
-            "1year": 365,
-            "2year": 730,
-            "3year": 1095,  # 3 years
-            "5year": 1825   # 5 years
-        }
-        
-        for period, days in periods.items():
-            target_date = current_date - timedelta(days=days)
-            historical_nav, historical_date = find_closest_nav(nav_data, target_date)
-            
-            if historical_nav is not None:
-                returns[period] = ((current_nav - historical_nav) / historical_nav) * 100
-                dates[period] = historical_date
-            else:
-                returns[period] = "NA"
-                dates[period] = "NA"
-        
-        return {
-            "name": fund["name"],
-            "code": fund["code"],
-            "current_nav": current_nav,
-            "current_date": nav_data[0]["date"],
-            "returns": returns,
-            "dates": dates
-        }
-    except requests.Timeout:
+        async with throttler:
+            async with session.get(url, timeout=aiohttp.ClientTimeout(total=15)) as response:
+                if response.status != 200:
+                    logger.error(f"HTTP {response.status} for {fund['name']}")
+                    return None
+                
+                data = await response.json()
+                
+                if "data" not in data:
+                    logger.error(f"Invalid response format for {fund['name']}: 'data' key missing")
+                    return None
+                
+                nav_data = data["data"]
+                if not nav_data:
+                    logger.error(f"Empty NAV data for {fund['name']}")
+                    return None
+                    
+                try:
+                    current_nav = float(nav_data[0]["nav"])
+                    current_date = datetime.strptime(nav_data[0]["date"], "%d-%m-%Y")
+                except (ValueError, KeyError, IndexError) as e:
+                    logger.error(f"Error parsing current NAV data for {fund['name']}: {str(e)}")
+                    return None
+                
+                # Calculate returns for different periods
+                returns = {}
+                dates = {}
+                periods = {
+                    "1day": 1,
+                    "1week": 7,
+                    "1month": 30,
+                    "3month": 90,
+                    "6month": 180,
+                    "1year": 365,
+                    "2year": 730,
+                    "3year": 1095,
+                    "5year": 1825
+                }
+                
+                for period, days in periods.items():
+                    target_date = current_date - timedelta(days=days)
+                    historical_nav, historical_date = find_closest_nav(nav_data, target_date)
+                    
+                    if historical_nav is not None:
+                        returns[period] = ((current_nav - historical_nav) / historical_nav) * 100
+                        dates[period] = historical_date
+                    else:
+                        returns[period] = 0  # Use 0 instead of "NA" for better sorting
+                        dates[period] = "NA"
+                
+                result = {
+                    "name": fund["name"],
+                    "code": fund["code"],
+                    "current_nav": current_nav,
+                    "current_date": nav_data[0]["date"],
+                    "returns": returns,
+                    "dates": dates
+                }
+                
+                # Cache the result
+                api_cache[cache_key] = result
+                logger.info(f"Successfully fetched and cached data for {fund['name']}")
+                return result
+                
+    except asyncio.TimeoutError:
         logger.error(f"Timeout while fetching data for {fund['name']}")
-        return None
-    except requests.RequestException as e:
-        logger.error(f"Network error while fetching data for {fund['name']}: {str(e)}")
         return None
     except Exception as e:
         logger.error(f"Error processing {fund['name']}: {str(e)}")
         return None
 
+async def fetch_all_funds_async():
+    """Fetch all fund data concurrently with improved rate limiting"""
+    # Rate limit: 3 requests per second for better performance
+    throttler = Throttler(rate_limit=3, period=1)
+    
+    async with aiohttp.ClientSession(
+        timeout=aiohttp.ClientTimeout(total=30),
+        connector=aiohttp.TCPConnector(limit=10, limit_per_host=5)
+    ) as session:
+        tasks = [
+            fetch_fund_data_async(session, fund, throttler) 
+            for fund in funds
+        ]
+        
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        
+        # Filter out None results and exceptions
+        valid_results = []
+        for i, result in enumerate(results):
+            if isinstance(result, Exception):
+                logger.error(f"Exception for fund {funds[i]['name']}: {str(result)}")
+            elif result is not None:
+                valid_results.append(result)
+        
+        return valid_results
+
+def fetch_fund_data(fund):
+    """Synchronous wrapper for backward compatibility"""
+    try:
+        # Run the async function in a new event loop
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        results = loop.run_until_complete(fetch_all_funds_async())
+        loop.close()
+        
+        # Find the specific fund result
+        for result in results:
+            if result and result['code'] == fund['code']:
+                return result
+        return None
+    except Exception as e:
+        logger.error(f"Error in fetch_fund_data: {str(e)}")
+        return None
+
+async def fetch_funds_data():
+    """Main async function to fetch all funds data with improved performance"""
+    return await fetch_all_funds_async()
+
+def clear_cache():
+    """Clear the API cache"""
+    api_cache.clear()
+    logger.info("API cache cleared")
+
+def get_cache_stats():
+    """Get cache statistics"""
+    return {
+        "cache_size": len(api_cache),
+        "max_size": api_cache.maxsize,
+        "ttl": api_cache.ttl
+    }
+
 def main():
-    results = []
-    for fund in funds:
-        logger.info(f"Fetching data for {fund['name']}...")
-        fund_data = fetch_fund_data(fund)
-        if fund_data:
-            results.append(fund_data)
-        time.sleep(1)  # Add delay to avoid hitting API rate limits
-    
-    # Create a DataFrame for better display
-    rows = []
-    for result in results:
-        row = {
-            "Fund Name": result["name"],
-            "AMFI Code": result["code"],
-            "Current NAV": result["current_nav"]
-        }
-        row.update({k: f"{v:.2f}%" if isinstance(v, float) else v for k, v in result["returns"].items()})
-        rows.append(row)
-    
-    df = pd.DataFrame(rows)
-    print("\nMutual Fund Returns:")
-    print(df.to_string(index=False))
-    
-    # Save to CSV
-    df.to_csv("mutual_fund_returns.csv", index=False)
-    print("\nResults have been saved to 'mutual_fund_returns.csv'")
+    """Main function for command line usage with improved output"""
+    try:
+        # Run async function
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        results = loop.run_until_complete(fetch_all_funds_async())
+        loop.close()
+        
+        if not results:
+            logger.error("No fund data could be fetched")
+            return
+        
+        # Create a DataFrame for better display
+        rows = []
+        for result in results:
+            if result:
+                row = {
+                    'Fund Name': result['name'],
+                    'Code': result['code'],
+                    'Current NAV': f"{result['current_nav']:.2f}",
+                    'Date': result['current_date'],
+                    '1D Return': f"{result['returns'].get('1day', 0):.2f}%",
+                    '1W Return': f"{result['returns'].get('1week', 0):.2f}%",
+                    '1M Return': f"{result['returns'].get('1month', 0):.2f}%",
+                    '3M Return': f"{result['returns'].get('3month', 0):.2f}%",
+                    '1Y Return': f"{result['returns'].get('1year', 0):.2f}%"
+                }
+                rows.append(row)
+        
+        df = pd.DataFrame(rows)
+        print("\nMutual Fund Returns Summary:")
+        print("=" * 80)
+        print(df.to_string(index=False))
+        print(f"\nTotal funds processed: {len(results)}")
+        print(f"Cache stats: {get_cache_stats()}")
+        
+    except Exception as e:
+        logger.error(f"Error in main function: {str(e)}")
+        logger.error(traceback.format_exc())
 
 if __name__ == "__main__":
     main() 
