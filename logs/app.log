@@ -14,3 +14,114 @@
 2025-07-13 16:58:28,289 - fetch_mf_returns - INFO - Successfully fetched and cached data for Quant ELSS Tax Saver Direct-Growth
 2025-07-13 16:58:28,290 - app - INFO - Successfully fetched data for 9 funds
 2025-07-13 16:58:28,291 - app - INFO - Successfully prepared data for template rendering: 9 funds
+2025-08-08 01:38:41,577 - __main__ - INFO - Redis connection established
+2025-08-08 01:38:41,634 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+2025-08-08 01:38:41,635 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-08-08 01:38:41,637 - werkzeug - INFO -  * Restarting with stat
+2025-08-08 01:38:43,057 - __main__ - INFO - Redis connection established
+2025-08-08 01:38:43,083 - werkzeug - WARNING -  * Debugger is active!
+2025-08-08 01:38:43,089 - werkzeug - INFO -  * Debugger PIN: 342-181-202
+2025-08-08 01:38:43,968 - __main__ - INFO - Starting to fetch fund data
+2025-08-08 01:38:45,409 - __main__ - INFO - Starting to fetch fund data
+2025-08-08 01:38:46,031 - fetch_mf_returns - INFO - Successfully fetched and cached data for Bandhan Small Cap Fund
+2025-08-08 01:38:46,352 - fetch_mf_returns - INFO - Successfully fetched and cached data for Quant Small Cap Fund
+2025-08-08 01:38:46,379 - fetch_mf_returns - INFO - Successfully fetched and cached data for Nippon India Small Cap Fund
+2025-08-08 01:38:46,942 - fetch_mf_returns - INFO - Successfully fetched and cached data for Edelweiss Mid Cap Fund
+2025-08-08 01:38:46,993 - fetch_mf_returns - INFO - Successfully fetched and cached data for Quant ELSS Tax Saver Direct-Growth
+2025-08-08 01:38:47,015 - fetch_mf_returns - INFO - Successfully fetched and cached data for Quant Mid Cap Fund
+2025-08-08 01:38:47,062 - fetch_mf_returns - INFO - Successfully fetched and cached data for Bandhan Small Cap Fund
+2025-08-08 01:38:47,224 - fetch_mf_returns - INFO - Successfully fetched and cached data for Motilal Oswal Midcap 30 Fund
+2025-08-08 01:38:47,406 - fetch_mf_returns - INFO - Successfully fetched and cached data for Nippon India Growth Fund
+2025-08-08 01:38:47,513 - fetch_mf_returns - INFO - Successfully fetched and cached data for Quant Small Cap Fund
+2025-08-08 01:38:47,552 - fetch_mf_returns - INFO - Successfully fetched and cached data for Nippon India Small Cap Fund
+2025-08-08 01:38:47,829 - fetch_mf_returns - INFO - Successfully fetched and cached data for Motilal Oswal Midcap 30 Fund
+2025-08-08 01:38:47,876 - fetch_mf_returns - INFO - Successfully fetched and cached data for Parag Parikh Flexi Cap Direct-Growth
+2025-08-08 01:38:47,877 - __main__ - INFO - Successfully fetched data for 9 funds
+2025-08-08 01:38:47,879 - __main__ - INFO - Successfully prepared data for template rendering: 9 funds
+2025-08-08 01:38:47,913 - werkzeug - INFO - 127.0.0.1 - - [08/Aug/2025 01:38:47] "GET / HTTP/1.1" 200 -
+2025-08-08 01:38:48,042 - werkzeug - INFO - 127.0.0.1 - - [08/Aug/2025 01:38:48] "GET /static/style.css HTTP/1.1" 200 -
+2025-08-08 01:38:48,228 - fetch_mf_returns - INFO - Successfully fetched and cached data for Edelweiss Mid Cap Fund
+2025-08-08 01:38:48,354 - fetch_mf_returns - INFO - Successfully fetched and cached data for Quant Mid Cap Fund
+2025-08-08 01:38:48,603 - fetch_mf_returns - INFO - Successfully fetched and cached data for Parag Parikh Flexi Cap Direct-Growth
+2025-08-08 01:38:48,629 - fetch_mf_returns - INFO - Successfully fetched and cached data for Quant ELSS Tax Saver Direct-Growth
+2025-08-08 01:38:48,761 - fetch_mf_returns - INFO - Successfully fetched and cached data for Nippon India Growth Fund
+2025-08-08 01:38:48,762 - __main__ - INFO - Successfully fetched data for 9 funds
+2025-08-08 01:38:48,763 - __main__ - INFO - Successfully prepared data for template rendering: 9 funds
+2025-08-08 01:38:48,766 - werkzeug - INFO - 127.0.0.1 - - [08/Aug/2025 01:38:48] "GET / HTTP/1.1" 200 -
+2025-08-08 01:38:48,909 - werkzeug - INFO - 127.0.0.1 - - [08/Aug/2025 01:38:48] "[36mGET /static/style.css HTTP/1.1[0m" 304 -
+2025-08-08 01:38:50,363 - werkzeug - INFO - 127.0.0.1 - - [08/Aug/2025 01:38:50] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+2025-08-08 01:39:48,707 - __main__ - INFO - Redis cache hit for get_cached_data:-6991676743735352727
+2025-08-08 01:39:48,709 - werkzeug - INFO - 127.0.0.1 - - [08/Aug/2025 01:39:48] "GET /api/funds HTTP/1.1" 200 -
+2025-08-08 01:45:17,636 - __main__ - INFO - Redis cache hit for get_cached_data:-6991676743735352727
+2025-08-08 01:45:17,636 - werkzeug - INFO - 127.0.0.1 - - [08/Aug/2025 01:45:17] "GET /api/funds HTTP/1.1" 200 -
+2025-08-08 01:45:35,986 - werkzeug - INFO - 127.0.0.1 - - [08/Aug/2025 01:45:35] "[31m[1mPOST /api/refresh HTTP/1.1[0m" 405 -
+2025-08-08 01:45:36,652 - __main__ - INFO - Redis cache hit for get_cached_data:-6991676743735352727
+2025-08-08 01:45:36,655 - werkzeug - INFO - 127.0.0.1 - - [08/Aug/2025 01:45:36] "GET /api/funds HTTP/1.1" 200 -
+2025-08-08 01:59:49,795 - __main__ - INFO - Starting to fetch fund data
+2025-08-08 01:59:51,866 - fetch_mf_returns - INFO - Successfully fetched and cached data for Bandhan Small Cap Fund
+2025-08-08 01:59:52,153 - fetch_mf_returns - INFO - Successfully fetched and cached data for Quant Small Cap Fund
+2025-08-08 01:59:52,176 - fetch_mf_returns - INFO - Successfully fetched and cached data for Nippon India Small Cap Fund
+2025-08-08 01:59:52,766 - fetch_mf_returns - INFO - Successfully fetched and cached data for Quant Mid Cap Fund
+2025-08-08 01:59:52,801 - fetch_mf_returns - INFO - Successfully fetched and cached data for Nippon India Growth Fund
+2025-08-08 01:59:52,818 - fetch_mf_returns - INFO - Successfully fetched and cached data for Edelweiss Mid Cap Fund
+2025-08-08 01:59:52,952 - fetch_mf_returns - INFO - Successfully fetched and cached data for Parag Parikh Flexi Cap Direct-Growth
+2025-08-08 01:59:53,164 - fetch_mf_returns - INFO - Successfully fetched and cached data for Quant ELSS Tax Saver Direct-Growth
+2025-08-08 01:59:53,505 - fetch_mf_returns - INFO - Successfully fetched and cached data for Motilal Oswal Midcap 30 Fund
+2025-08-08 01:59:53,505 - __main__ - INFO - Successfully fetched data for 9 funds
+2025-08-08 01:59:53,510 - werkzeug - INFO - 127.0.0.1 - - [08/Aug/2025 01:59:53] "GET /api/funds HTTP/1.1" 200 -
+2025-08-08 02:04:19,478 - __main__ - INFO - Redis cache hit for get_cached_data:-6991676743735352727
+2025-08-08 02:04:19,479 - __main__ - INFO - Successfully prepared data for template rendering: 9 funds
+2025-08-08 02:04:19,480 - werkzeug - INFO - 127.0.0.1 - - [08/Aug/2025 02:04:19] "GET / HTTP/1.1" 200 -
+2025-08-08 02:04:19,553 - werkzeug - INFO - 127.0.0.1 - - [08/Aug/2025 02:04:19] "[36mGET /static/style.css HTTP/1.1[0m" 304 -
+2025-08-08 02:04:21,199 - __main__ - INFO - Redis cache hit for get_cached_data:-6991676743735352727
+2025-08-08 02:04:21,201 - __main__ - INFO - Successfully prepared data for template rendering: 9 funds
+2025-08-08 02:04:21,203 - werkzeug - INFO - 127.0.0.1 - - [08/Aug/2025 02:04:21] "GET / HTTP/1.1" 200 -
+2025-08-08 02:04:21,260 - werkzeug - INFO - 127.0.0.1 - - [08/Aug/2025 02:04:21] "[36mGET /static/style.css HTTP/1.1[0m" 304 -
+2025-08-08 02:06:37,262 - __main__ - INFO - Redis cache hit for get_cached_data:-6991676743735352727
+2025-08-08 02:06:37,263 - __main__ - INFO - Successfully prepared data for template rendering: 9 funds
+2025-08-08 02:06:37,265 - werkzeug - INFO - 127.0.0.1 - - [08/Aug/2025 02:06:37] "GET / HTTP/1.1" 200 -
+2025-08-08 02:06:37,311 - werkzeug - INFO - 127.0.0.1 - - [08/Aug/2025 02:06:37] "GET /static/style.css HTTP/1.1" 200 -
+2025-08-08 02:07:24,216 - __main__ - INFO - Redis connection established
+2025-08-08 02:07:24,249 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+2025-08-08 02:07:24,250 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-08-08 02:07:24,251 - werkzeug - INFO -  * Restarting with stat
+2025-08-08 02:07:25,513 - __main__ - INFO - Redis connection established
+2025-08-08 02:07:25,535 - werkzeug - WARNING -  * Debugger is active!
+2025-08-08 02:07:25,540 - werkzeug - INFO -  * Debugger PIN: 342-181-202
+2025-08-08 02:07:26,546 - __main__ - INFO - Starting to fetch fund data
+2025-08-08 02:07:27,881 - __main__ - INFO - Starting to fetch fund data
+2025-08-08 02:07:28,723 - fetch_mf_returns - INFO - Successfully fetched and cached data for Bandhan Small Cap Fund
+2025-08-08 02:07:28,996 - fetch_mf_returns - INFO - Successfully fetched and cached data for Nippon India Small Cap Fund
+2025-08-08 02:07:29,019 - fetch_mf_returns - INFO - Successfully fetched and cached data for Quant Small Cap Fund
+2025-08-08 02:07:29,488 - fetch_mf_returns - INFO - Successfully fetched and cached data for Quant Mid Cap Fund
+2025-08-08 02:07:29,527 - fetch_mf_returns - INFO - Successfully fetched and cached data for Bandhan Small Cap Fund
+2025-08-08 02:07:29,669 - fetch_mf_returns - INFO - Successfully fetched and cached data for Edelweiss Mid Cap Fund
+2025-08-08 02:07:29,847 - fetch_mf_returns - INFO - Successfully fetched and cached data for Nippon India Small Cap Fund
+2025-08-08 02:07:29,871 - fetch_mf_returns - INFO - Successfully fetched and cached data for Quant Small Cap Fund
+2025-08-08 02:07:29,931 - fetch_mf_returns - INFO - Successfully fetched and cached data for Nippon India Growth Fund
+2025-08-08 02:07:29,953 - fetch_mf_returns - INFO - Successfully fetched and cached data for Motilal Oswal Midcap 30 Fund
+2025-08-08 02:07:29,979 - fetch_mf_returns - INFO - Successfully fetched and cached data for Quant ELSS Tax Saver Direct-Growth
+2025-08-08 02:07:30,259 - fetch_mf_returns - INFO - Successfully fetched and cached data for Parag Parikh Flexi Cap Direct-Growth
+2025-08-08 02:07:30,261 - __main__ - INFO - Successfully fetched data for 9 funds
+2025-08-08 02:07:30,262 - __main__ - INFO - Successfully prepared data for template rendering: 9 funds
+2025-08-08 02:07:30,293 - werkzeug - INFO - 127.0.0.1 - - [08/Aug/2025 02:07:30] "GET / HTTP/1.1" 200 -
+2025-08-08 02:07:30,315 - fetch_mf_returns - INFO - Successfully fetched and cached data for Motilal Oswal Midcap 30 Fund
+2025-08-08 02:07:30,412 - werkzeug - INFO - 127.0.0.1 - - [08/Aug/2025 02:07:30] "GET /static/style.css HTTP/1.1" 200 -
+2025-08-08 02:07:30,672 - fetch_mf_returns - INFO - Successfully fetched and cached data for Edelweiss Mid Cap Fund
+2025-08-08 02:07:30,905 - fetch_mf_returns - INFO - Successfully fetched and cached data for Nippon India Growth Fund
+2025-08-08 02:07:30,980 - fetch_mf_returns - INFO - Successfully fetched and cached data for Quant ELSS Tax Saver Direct-Growth
+2025-08-08 02:07:31,005 - fetch_mf_returns - INFO - Successfully fetched and cached data for Quant Mid Cap Fund
+2025-08-08 02:07:31,114 - fetch_mf_returns - INFO - Successfully fetched and cached data for Parag Parikh Flexi Cap Direct-Growth
+2025-08-08 02:07:31,116 - __main__ - INFO - Successfully fetched data for 9 funds
+2025-08-08 02:07:31,117 - __main__ - INFO - Successfully prepared data for template rendering: 9 funds
+2025-08-08 02:07:31,118 - werkzeug - INFO - 127.0.0.1 - - [08/Aug/2025 02:07:31] "GET / HTTP/1.1" 200 -
+2025-08-08 02:07:31,169 - werkzeug - INFO - 127.0.0.1 - - [08/Aug/2025 02:07:31] "[36mGET /static/style.css HTTP/1.1[0m" 304 -
+2025-08-08 02:07:51,904 - __main__ - INFO - Redis cache hit for get_cached_data:3523144962619004270
+2025-08-08 02:07:51,905 - werkzeug - INFO - 127.0.0.1 - - [08/Aug/2025 02:07:51] "GET /api/funds HTTP/1.1" 200 -
+2025-08-08 02:08:00,355 - __main__ - INFO - Redis cache hit for get_cached_data:3523144962619004270
+2025-08-08 02:08:00,356 - __main__ - INFO - Successfully prepared data for template rendering: 9 funds
+2025-08-08 02:08:00,358 - werkzeug - INFO - 127.0.0.1 - - [08/Aug/2025 02:08:00] "GET / HTTP/1.1" 200 -
+2025-08-08 02:11:03,626 - __main__ - INFO - Redis cache hit for get_cached_data:3523144962619004270
+2025-08-08 02:11:03,628 - werkzeug - INFO - 127.0.0.1 - - [08/Aug/2025 02:11:03] "GET /api/funds HTTP/1.1" 200 -
