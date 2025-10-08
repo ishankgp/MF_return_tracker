@@ -1,14 +1,9 @@
 import aiohttp
 import asyncio
-import pandas as pd
 from datetime import datetime, timedelta
-import time
 import logging
 from asyncio_throttle import Throttler
 from cachetools import TTLCache
-import json
-import os
-import traceback
 
 logger = logging.getLogger(__name__)
 
@@ -109,9 +104,18 @@ async def fetch_fund_data_async(session, fund, throttler):
                 for period, days in periods.items():
                     target_date = current_date - timedelta(days=days)
                     historical_nav, historical_date = find_closest_nav(nav_data, target_date)
-                    
-                    if historical_nav is not None:
-                        returns[period] = ((current_nav - historical_nav) / historical_nav) * 100
+
+                    if historical_nav is not None and historical_nav != 0:
+                        # Annualize multi-year periods (>= 2 years). Keep others as trailing returns.
+                        if period in {"2year", "3year", "5year"}:
+                            try:
+                                years = days / 365.0
+                                cagr = ((current_nav / historical_nav) ** (1 / years) - 1) * 100
+                                returns[period] = cagr
+                            except Exception:
+                                returns[period] = ((current_nav - historical_nav) / historical_nav) * 100
+                        else:
+                            returns[period] = ((current_nav - historical_nav) / historical_nav) * 100
                         dates[period] = historical_date
                     else:
                         returns[period] = 0  # Use 0 instead of "NA" for better sorting
@@ -164,40 +168,11 @@ async def fetch_all_funds_async():
         
         return valid_results
 
-def fetch_fund_data(fund):
-    """Synchronous wrapper for backward compatibility"""
-    try:
-        # Run the async function in a new event loop
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        results = loop.run_until_complete(fetch_all_funds_async())
-        loop.close()
-        
-        # Find the specific fund result
-        for result in results:
-            if result and result['code'] == fund['code']:
-                return result
-        return None
-    except Exception as e:
-        logger.error(f"Error in fetch_fund_data: {str(e)}")
-        return None
 
 async def fetch_funds_data():
     """Main async function to fetch all funds data with improved performance"""
     return await fetch_all_funds_async()
 
-def clear_cache():
-    """Clear the API cache"""
-    api_cache.clear()
-    logger.info("API cache cleared")
-
-def get_cache_stats():
-    """Get cache statistics"""
-    return {
-        "cache_size": len(api_cache),
-        "max_size": api_cache.maxsize,
-        "ttl": api_cache.ttl
-    }
 
 def main():
     """Main function for command line usage with improved output"""
@@ -229,16 +204,14 @@ def main():
                 }
                 rows.append(row)
         
-        df = pd.DataFrame(rows)
         print("\nMutual Fund Returns Summary:")
         print("=" * 80)
-        print(df.to_string(index=False))
+        for row in rows:
+            print(f"{row['Fund Name']:<30} {row['Code']:<10} {row['Current NAV']:<12} {row['Date']:<12} {row['1D Return']:<10} {row['1W Return']:<10} {row['1M Return']:<10} {row['3M Return']:<10} {row['1Y Return']:<10}")
         print(f"\nTotal funds processed: {len(results)}")
-        print(f"Cache stats: {get_cache_stats()}")
         
     except Exception as e:
         logger.error(f"Error in main function: {str(e)}")
-        logger.error(traceback.format_exc())
 
 if __name__ == "__main__":
     main() 

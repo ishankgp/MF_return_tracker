@@ -1,4 +1,7 @@
 @echo off
+REM Ensure this script runs from its own directory
+pushd "%~dp0"
+
 echo Starting Mutual Fund Returns Tracker...
 echo.
 
@@ -49,5 +52,8 @@ echo Press Ctrl+C to stop the server
 echo.
 
 python app.py
+
+REM Return to original directory
+popd
 
 pause 

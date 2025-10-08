@@ -3,13 +3,10 @@ import pandas as pd
 from fetch_mf_returns import fetch_funds_data, funds
 import json
 from datetime import datetime
-from functools import lru_cache, wraps
+from functools import wraps
 import logging
 import traceback
 import os
-import time
-import webbrowser
-import threading
 import asyncio
 from flask_cors import CORS
 from cachetools import TTLCache
@@ -22,12 +19,16 @@ load_dotenv()
 app = Flask(__name__)
 CORS(app)
 
-# Configure logging
+# Ensure the logs directory exists and configure logging early with absolute paths
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+logs_dir = os.path.join(BASE_DIR, 'logs')
+os.makedirs(logs_dir, exist_ok=True)
+
 logging.basicConfig(
-    level=logging.INFO, 
+    level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('logs/app.log'),
+        logging.FileHandler(os.path.join(logs_dir, 'app.log')),
         logging.StreamHandler()
     ]
 )
@@ -306,14 +307,6 @@ if __name__ == '__main__':
     # Create logs directory if it doesn't exist
     if not os.path.exists('logs'):
         os.makedirs('logs')
-    
-    # Open browser automatically in development
-    def open_browser():
-        time.sleep(2)  # Wait for server to start
-        webbrowser.open('http://127.0.0.1:5000')
-    
-    # Start browser in a separate thread
-    threading.Thread(target=open_browser, daemon=True).start()
     
     # Run the app
     app.run(debug=True, host='127.0.0.1', port=5000) 
