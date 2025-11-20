@@ -8,19 +8,6 @@ from cachetools import TTLCache
 logger = logging.getLogger(__name__)
 
 # Cache for API responses (10 minutes TTL for better performance)
-api_cache = TTLCache(maxsize=200, ttl=600)
-
-# List of funds with their AMFI codes
-funds = [
-    {"name": "Quant Small Cap Fund", "code": "120828"},
-    {"name": "Bandhan Small Cap Fund", "code": "147946"},
-    {"name": "Nippon India Small Cap Fund", "code": "118778"},
-    {"name": "Quant Mid Cap Fund", "code": "120841"},
-    {"name": "Edelweiss Mid Cap Fund", "code": "140228"},
-    {"name": "Motilal Oswal Midcap 30 Fund", "code": "127042"},
-    {"name": "Parag Parikh Flexi Cap Direct-Growth", "code": "122639"},
-    {"name": "Quant ELSS Tax Saver Direct-Growth", "code": "120847"},
-    {"name": "Nippon India Growth Fund", "code": "118668"}
 ]
 
 def find_closest_nav(nav_data, target_date):
