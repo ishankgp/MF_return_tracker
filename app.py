@@ -1,4 +1,4 @@
-from flask import Flask, render_template, send_from_directory, jsonify, request
+from flask import Flask, render_template, send_from_directory, jsonify, request, redirect
 import pandas as pd
 from fetch_mf_returns import fetch_funds_data, funds
 import json
@@ -142,7 +142,8 @@ def process_fund_data(results):
                 "current_nav": f"{result['current_nav']:.2f}",
                 "current_date": result["current_date"],
                 "dates": result["dates"],
-                "returns": {}
+                "returns": {},
+                "year_breakdown": result.get("year_breakdown", {})
             }
             
             # Format returns as numbers or 0 for sorting
@@ -161,38 +162,8 @@ def process_fund_data(results):
 
 @app.route('/')
 def index():
-    """Main page route with improved error handling and performance"""
-    try:
-        results = get_cached_data()
-        
-        if "error" in results:
-            logger.error(f"Error in cached data: {results['error']}")
-            return render_template('error.html', 
-                                error_message="Unable to fetch fund data. Please try again later.",
-                                details=results['error']), 500
-        
-        funds_data = process_fund_data(results)
-        
-        if not funds_data:
-            logger.error("No valid fund data was processed")
-            return render_template('error.html', 
-                                error_message="Unable to process fund data. Please try again later.",
-                                details="Data processing failed"), 500
-        
-        current_time = datetime.now().strftime("%d-%b-%Y %I:%M:%S %p IST")
-        logger.info(f"Successfully prepared data for template rendering: {len(funds_data)} funds")
-        
-        return render_template('index.html', 
-                             funds=funds_data, 
-                             last_updated=current_time,
-                             fund_count=len(funds_data))
-    
-    except Exception as e:
-        logger.error(f"Error rendering index page: {str(e)}")
-        logger.error(traceback.format_exc())
-        return render_template('error.html', 
-                            error_message="Unable to fetch fund data. Please try again later.",
-                            details=str(e)), 500
+    """Redirect root route to Next.js frontend - unified frontend approach"""
+    return redirect('http://localhost:3000', code=302)
 
 @app.route('/api/funds')
 def api_funds():
@@ -211,6 +182,7 @@ def api_funds():
             fund = {
                 "id": str(idx),
                 "name": result["name"],
+                "code": result.get("code", ""),
                 "nav": float(result["current_nav"]),
                 "returns1d": result["returns"].get("1day", 0) or 0,
                 "returns1w": result["returns"].get("1week", 0) or 0,
@@ -218,10 +190,12 @@ def api_funds():
                 "returns3m": result["returns"].get("3month", 0) or 0,
                 "returns6m": result["returns"].get("6month", 0) or 0,
                 "returns1y": result["returns"].get("1year", 0) or 0,
+                "returns2y": result["returns"].get("2year", 0) or 0,
                 "returns3y": result["returns"].get("3year", 0) or 0,
                 "returns5y": result["returns"].get("5year", 0) or 0,
                 "dates": result["dates"],
                 "current_date": result.get("current_date"),
+                "year_breakdown": result.get("year_breakdown", {}),
                 "category": "Other",
                 "risk": "Medium"
             }
@@ -308,5 +282,14 @@ if __name__ == '__main__':
     if not os.path.exists('logs'):
         os.makedirs('logs')
     
-    # Run the app
-    app.run(debug=True, host='127.0.0.1', port=5000) 
+    # Check environment mode
+    flask_env = os.getenv('FLASK_ENV', 'development')
+    debug_mode = flask_env != 'production'
+    
+    if debug_mode:
+        logger.info("Starting Flask in DEVELOPMENT mode (debug=True)")
+    else:
+        logger.info("Starting Flask in PRODUCTION mode (debug=False)")
+    
+    # Run the app with appropriate settings
+    app.run(debug=debug_mode, host='127.0.0.1', port=5000, use_reloader=debug_mode) 

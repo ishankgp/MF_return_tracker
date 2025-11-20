@@ -24,9 +24,20 @@ A modern web application to track and analyze mutual fund performance with real-
 - Node.js 16+
 - Redis (optional, for caching)
 
+### Unified Frontend Architecture
+
+**All access is via a single frontend**: http://localhost:3000
+
+- **Next.js Frontend** (port 3000): Main UI - this is your entry point
+- **Flask Backend** (port 5000): API-only server - automatically redirects root to frontend
+
 ### One-Click Setup & Run
 
-Simply double-click the `quick-start.bat` file to launch both backend and frontend automatically.
+Simply double-click any of these batch files to launch both backend and frontend:
+
+- **`quick-start.bat`**: Quick development startup (recommended for daily use)
+- **`start-mf-tracker.bat`**: Full setup with dependency checks (first-time setup)
+- **`scheduled-start.bat`**: Production mode for scheduled tasks
 
 Or run from command line:
 ```bash
@@ -34,9 +45,10 @@ Or run from command line:
 ```
 
 This will:
-- Start the Flask backend at http://127.0.0.1:5000
-- Start the Next.js frontend at http://localhost:3000
-- Open your browser automatically
+- Start the Flask backend API at http://localhost:5000 (API only)
+- Start the Next.js frontend at http://localhost:3000 (Main UI)
+- Automatically open your browser to http://localhost:3000
+- Access Flask root (http://localhost:5000) automatically redirects to the frontend
 
 ## 📦 Manual Installation
 
@@ -115,35 +127,50 @@ funds = [
 
 ### Setting up Daily Auto-refresh (11 AM)
 
+**Important**: For scheduled tasks, use `scheduled-start.bat` instead of `quick-start.bat` to prevent multiple browser windows from opening.
+
 #### Windows Task Scheduler
 
 1. Open Task Scheduler
 2. Create Basic Task
 3. Set trigger: Daily at 11:00 AM
-4. Set action: Start `quick-start.bat`
+4. Set action: Start `scheduled-start.bat` (full path: `D:\Github clones\mutual_funds\scheduled-start.bat`)
 5. Enable "Run whether user is logged on or not"
+6. Set "Start in" directory to: `D:\Github clones\mutual_funds`
 
 #### Or use PowerShell to create scheduled task:
 
 ```powershell
-$action = New-ScheduledTaskAction -Execute "D:\Github clones\mutual_funds\quick-start.bat"
+$action = New-ScheduledTaskAction -Execute "D:\Github clones\mutual_funds\scheduled-start.bat" -WorkingDirectory "D:\Github clones\mutual_funds"
 $trigger = New-ScheduledTaskTrigger -Daily -At 11:00AM
-Register-ScheduledTask -TaskName "MutualFundTracker" -Action $action -Trigger $trigger
+$settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
+Register-ScheduledTask -TaskName "MutualFundTracker" -Action $action -Trigger $trigger -Settings $settings -Description "Daily mutual fund data refresh at 11 AM"
 ```
+
+#### Difference between startup scripts:
+
+- **`quick-start.bat`**: Quick development startup. Assumes dependencies are installed. Opens visible windows with dev servers.
+- **`start-mf-tracker.bat`**: Full setup script. Checks and installs dependencies automatically. Best for first-time setup.
+- **`scheduled-start.bat`**: Production mode for Task Scheduler. Runs in minimized windows, builds production bundle, prevents duplicates.
+
+**All scripts use the unified frontend approach** - access everything via http://localhost:3000
 
 ## 🔍 API Endpoints
 
-### Backend (Flask)
+### Backend (Flask) - API Only
 
-- `GET /` - Main dashboard (HTML)
+- `GET /` - Redirects to Next.js frontend (http://localhost:3000)
 - `GET /api/funds` - Get all fund data (JSON)
 - `POST /api/refresh` - Force data refresh
 - `GET /health` - Health check endpoint
 
-### Frontend API Routes
+### Frontend (Next.js) - Main Entry Point
 
+- `GET /` - Main dashboard (React UI)
 - `GET /api/funds` - Proxies to Flask backend
 - `POST /api/refresh` - Triggers data refresh
+
+**Note**: All user interaction happens through the Next.js frontend at http://localhost:3000. The Flask backend serves as an API-only service.
 
 ## 💡 Usage Tips
 
