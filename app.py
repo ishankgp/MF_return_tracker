@@ -12,6 +12,8 @@ from flask_cors import CORS
 from cachetools import TTLCache
 import redis
 from dotenv import load_dotenv
+from apscheduler.schedulers.background import BackgroundScheduler
+import pytz
 
 # Load environment variables
 load_dotenv()
@@ -19,18 +21,23 @@ load_dotenv()
 app = Flask(__name__)
 CORS(app)
 
+IS_VERCEL = os.environ.get('VERCEL') == '1'
+
 # Ensure the logs directory exists and configure logging early with absolute paths
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-logs_dir = os.path.join(BASE_DIR, 'logs')
-os.makedirs(logs_dir, exist_ok=True)
+# Data Directory for Persistence (Volumes)
+DATA_DIR = os.getenv('DATA_DIR', BASE_DIR)
+logs_dir = os.path.join(DATA_DIR, 'logs')
+
+log_handlers = [logging.StreamHandler()]
+if not IS_VERCEL:
+    os.makedirs(logs_dir, exist_ok=True)
+    log_handlers.append(logging.FileHandler(os.path.join(logs_dir, 'app.log')))
 
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler(os.path.join(logs_dir, 'app.log')),
-        logging.StreamHandler()
-    ]
+    handlers=log_handlers
 )
 logger = logging.getLogger(__name__)
 
@@ -263,10 +270,17 @@ def refresh_data():
         return jsonify({"error": str(e)}), 500
 
 # Notes Management
-NOTES_FILE = os.path.join(BASE_DIR, 'notes.json')
+NOTES_FILE = os.path.join(DATA_DIR, 'notes.json')
+CSV_FILE = os.path.join(DATA_DIR, 'mutual_fund_returns.csv')
+
+# In-memory storage for Vercel
+memory_notes = []
 
 def load_notes():
-    """Load notes from JSON file"""
+    """Load notes from JSON file or memory"""
+    if IS_VERCEL:
+        return memory_notes
+        
     if not os.path.exists(NOTES_FILE):
         return []
     try:
@@ -277,7 +291,12 @@ def load_notes():
         return []
 
 def save_notes(notes):
-    """Save notes to JSON file"""
+    """Save notes to JSON file or memory"""
+    if IS_VERCEL:
+        global memory_notes
+        memory_notes = notes
+        return True
+
     try:
         with open(NOTES_FILE, 'w') as f:
             json.dump(notes, f, indent=2)
@@ -285,6 +304,76 @@ def save_notes(notes):
     except Exception as e:
         logger.error(f"Error saving notes: {e}")
         return False
+
+# Scheduled Task for Data Refresh
+def scheduled_refresh():
+    """Function to be called by APScheduler"""
+    logger.info("Starting scheduled data refresh...")
+    with app.app_context():
+        try:
+            # 1. Refresh Cache (Side effect of calling the logic, ignoring return)
+            # We call get_cached_data directly to strip the caching decorator if we want fresh?
+            # Actually, refresh_data() clears cache then calls get_cached_data.
+            # But refresh_data() returns a Response object.
+            # Let's reproduce the refresh_data logic here for clarity and safety.
+            
+            memory_cache.clear()
+            if redis_client:
+                redis_client.flushdb()
+                
+            results = get_cached_data() # fetches fresh because cache is clear
+            
+            if "funds" not in results:
+                logger.error("Scheduled refresh: No funds data fetched.")
+                return
+
+            # 2. Save to CSV (Persistence)
+            funds_data = process_fund_data(results)
+            
+            csv_rows = []
+            for fund in funds_data:
+                row = {
+                    'Fund Name': fund['name'],
+                    'AMFI Code': fund['code'],
+                    'Current NAV': fund['current_nav'],
+                    '1day': f"{fund['returns'].get('1day', 0):.2f}%",
+                    '1week': f"{fund['returns'].get('1week', 0):.2f}%",
+                    '1month': f"{fund['returns'].get('1month', 0):.2f}%",
+                    '3month': f"{fund['returns'].get('3month', 0):.2f}%",
+                    '6month': f"{fund['returns'].get('6month', 0):.2f}%",
+                    '1year': f"{fund['returns'].get('1year', 0):.2f}%",
+                    '2year': f"{fund['returns'].get('2year', 0):.2f}%",
+                    '3year': f"{fund['returns'].get('3year', 0):.2f}%",
+                    '5year': f"{fund['returns'].get('5year', 0):.2f}%"
+                }
+                csv_rows.append(row)
+            
+            df = pd.DataFrame(csv_rows)
+            columns = ['Fund Name', 'AMFI Code', 'Current NAV', '1day', '1week', '1month', 
+                      '3month', '6month', '1year', '2year', '3year', '5year']
+            
+            # Ensure columns exist
+            for col in columns:
+                if col not in df.columns:
+                    df[col] = "0.00%"
+            
+            df = df[columns]
+            df.to_csv(CSV_FILE, index=False)
+            logger.info(f"Scheduled refresh success. Saved CSV to {CSV_FILE}")
+                
+        except Exception as e:
+            logger.error(f"Scheduled refresh failed: {e}")
+            logger.error(traceback.format_exc())
+
+# Initialize Scheduler
+# Only start scheduler if not in debug mode (prevents double run with reloader)
+if not app.debug or os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
+    scheduler = BackgroundScheduler()
+    # Run every day at 11:00 AM IST
+    scheduler.add_job(func=scheduled_refresh, trigger="cron", hour=11, minute=0, timezone=pytz.timezone('Asia/Kolkata'))
+    scheduler.start()
+    logger.info("Scheduler started (11:00 AM daily)")
+
 
 @app.route('/api/notes', methods=['GET'])
 def get_notes():
