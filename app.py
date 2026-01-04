@@ -162,8 +162,34 @@ def process_fund_data(results):
 
 @app.route('/')
 def index():
-    """Redirect root route to Next.js frontend - unified frontend approach"""
-    return redirect('http://localhost:3000', code=302)
+    """Main dashboard page"""
+    try:
+        results = get_cached_data()
+        funds_data = process_fund_data(results)
+        
+        # Handle empty funds list
+        if not funds_data:
+            return render_template('error.html', 
+                                 error_message="No fund data available",
+                                 details="Unable to fetch fund data from the API"), 500
+        
+        # Format timestamp for display
+        timestamp = results.get("timestamp", datetime.now().isoformat())
+        try:
+            dt = datetime.fromisoformat(timestamp)
+            last_updated = dt.strftime("%Y-%m-%d %H:%M:%S")
+        except:
+            last_updated = timestamp
+        
+        return render_template('index.html', 
+                             funds=funds_data,
+                             last_updated=last_updated)
+    except Exception as e:
+        logger.error(f"Error rendering index: {str(e)}")
+        logger.error(traceback.format_exc())
+        return render_template('error.html', 
+                             error_message="Error loading fund data",
+                             details=str(e)), 500
 
 @app.route('/api/funds')
 def api_funds():
@@ -236,6 +262,77 @@ def refresh_data():
         logger.error(f"Error refreshing data: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
+# Notes Management
+NOTES_FILE = os.path.join(BASE_DIR, 'notes.json')
+
+def load_notes():
+    """Load notes from JSON file"""
+    if not os.path.exists(NOTES_FILE):
+        return []
+    try:
+        with open(NOTES_FILE, 'r') as f:
+            return json.load(f)
+    except Exception as e:
+        logger.error(f"Error loading notes: {e}")
+        return []
+
+def save_notes(notes):
+    """Save notes to JSON file"""
+    try:
+        with open(NOTES_FILE, 'w') as f:
+            json.dump(notes, f, indent=2)
+        return True
+    except Exception as e:
+        logger.error(f"Error saving notes: {e}")
+        return False
+
+@app.route('/api/notes', methods=['GET'])
+def get_notes():
+    """Get all notes"""
+    return jsonify(load_notes())
+
+@app.route('/api/notes', methods=['POST'])
+def add_note():
+    """Add a new note"""
+    try:
+        data = request.json
+        if not data or 'text' not in data or 'date' not in data:
+            return jsonify({"error": "Invalid data"}), 400
+            
+        notes = load_notes()
+        notes.append({
+            "date": data['date'],
+            "text": data['text'],
+            "created_at": datetime.now().isoformat()
+        })
+        
+        if save_notes(notes):
+            return jsonify({"message": "Note added successfully", "notes": notes})
+        else:
+            return jsonify({"error": "Failed to save note"}), 500
+            
+    except Exception as e:
+        logger.error(f"Error adding note: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/notes/<int:index>', methods=['DELETE'])
+def delete_note(index):
+    """Delete a note by index"""
+    try:
+        notes = load_notes()
+        if 0 <= index < len(notes):
+            notes.pop(index)
+            if save_notes(notes):
+                return jsonify({"message": "Note deleted successfully", "notes": notes})
+            else:
+                return jsonify({"error": "Failed to save changes"}), 500
+        else:
+            return jsonify({"error": "Note not found"}), 404
+            
+    except Exception as e:
+        logger.error(f"Error deleting note: {e}")
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/health')
 def health_check():
     """Health check endpoint for monitoring"""
@@ -292,4 +389,4 @@ if __name__ == '__main__':
         logger.info("Starting Flask in PRODUCTION mode (debug=False)")
     
     # Run the app with appropriate settings
-    app.run(debug=debug_mode, host='127.0.0.1', port=5000, use_reloader=debug_mode) 
+    app.run(debug=debug_mode, host='127.0.0.1', port=5000, use_reloader=debug_mode)

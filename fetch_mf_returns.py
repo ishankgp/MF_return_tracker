@@ -8,6 +8,20 @@ from cachetools import TTLCache
 logger = logging.getLogger(__name__)
 
 # Cache for API responses (10 minutes TTL for better performance)
+api_cache = TTLCache(maxsize=100, ttl=600)
+
+# List of mutual funds to track
+funds = [
+    {"name": "HDFC Flexi Cap Fund", "code": "120503"},
+    {"name": "Parag Parikh Flexi Cap Fund", "code": "122639"},
+    {"name": "Motilal Oswal Midcap Fund", "code": "135777"},
+    {"name": "Quant Small Cap Fund", "code": "112316"},
+    {"name": "Nippon India Small Cap Fund", "code": "118989"},
+    {"name": "Axis Small Cap Fund", "code": "120594"},
+    {"name": "SBI Small Cap Fund", "code": "119597"},
+    {"name": "Kotak Equity Opportunities Fund", "code": "119551"},
+    {"name": "Edelweiss Mid Cap Fund", "code": "147769"},
+    {"name": "Invesco India Smallcap Fund", "code": "120686"},
 ]
 
 def find_closest_nav(nav_data, target_date):
@@ -108,13 +122,48 @@ async def fetch_fund_data_async(session, fund, throttler):
                         returns[period] = 0  # Use 0 instead of "NA" for better sorting
                         dates[period] = "NA"
                 
+                # Calculate year-on-year breakdown
+                year_breakdown = {}
+                for period_years in [2, 3, 5]:
+                    period_key = f"{period_years}year"
+                    period_data = {"year_dates": {}}
+                    
+                    for i in range(period_years):
+                        year_num = i + 1
+                        end_date_target = current_date - timedelta(days=365 * i)
+                        start_date_target = current_date - timedelta(days=365 * (i + 1))
+                        
+                        end_nav, end_date_str = find_closest_nav(nav_data, end_date_target)
+                        start_nav, start_date_str = find_closest_nav(nav_data, start_date_target)
+                        
+                        if end_nav is not None and start_nav is not None and start_nav != 0:
+                            ret = ((end_nav - start_nav) / start_nav) * 100
+                            period_data[f"year{year_num}"] = ret
+                            period_data["year_dates"][f"year{year_num}_start"] = start_date_str
+                            period_data["year_dates"][f"year{year_num}_end"] = end_date_str
+                        else:
+                            period_data[f"year{year_num}"] = 0
+                            period_data["year_dates"][f"year{year_num}_start"] = "NA"
+                            period_data["year_dates"][f"year{year_num}_end"] = "NA"
+                    
+                    # Add total absolute return for the period
+                    target_date = current_date - timedelta(days=365 * period_years)
+                    historical_nav, _ = find_closest_nav(nav_data, target_date)
+                    if historical_nav is not None and historical_nav != 0:
+                        period_data["total_absolute"] = ((current_nav - historical_nav) / historical_nav) * 100
+                    else:
+                        period_data["total_absolute"] = 0
+
+                    year_breakdown[period_key] = period_data
+
                 result = {
                     "name": fund["name"],
                     "code": fund["code"],
                     "current_nav": current_nav,
                     "current_date": nav_data[0]["date"],
                     "returns": returns,
-                    "dates": dates
+                    "dates": dates,
+                    "year_breakdown": year_breakdown
                 }
                 
                 # Cache the result
@@ -201,4 +250,4 @@ def main():
         logger.error(f"Error in main function: {str(e)}")
 
 if __name__ == "__main__":
-    main() 
+    main()
