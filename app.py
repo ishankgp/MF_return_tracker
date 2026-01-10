@@ -75,9 +75,11 @@ def login():
 @app.route('/auth/login')
 def auth_login():
     redirect_uri = url_for('auth_callback', _external=True)
-    # Ensure http/https consistency for local dev vs prod
-    if not IS_VERCEL and 'localhost' in redirect_uri:
-        redirect_uri = redirect_uri.replace('https://', 'http://')
+    
+    # Force HTTPS in production (Railway/Vercel)
+    if not 'localhost' in redirect_uri and not '127.0.0.1' in redirect_uri:
+        redirect_uri = redirect_uri.replace('http://', 'https://')
+        
     return google.authorize_redirect(redirect_uri)
 
 @app.route('/auth/callback')
