@@ -12,16 +12,14 @@ api_cache = TTLCache(maxsize=100, ttl=600)
 
 # List of mutual funds to track
 funds = [
-    {"name": "HDFC Flexi Cap Fund", "code": "120503"},
+    {"name": "Motilal Oswal Midcap Fund", "code": "127042"},
+    {"name": "Quant Small Cap Fund", "code": "120828"},
+    {"name": "Bandhan Small Cap Fund", "code": "147946"},
+    {"name": "Edelweiss Mid Cap Fund", "code": "140228"},
     {"name": "Parag Parikh Flexi Cap Fund", "code": "122639"},
-    {"name": "Motilal Oswal Midcap Fund", "code": "135777"},
-    {"name": "Quant Small Cap Fund", "code": "112316"},
-    {"name": "Nippon India Small Cap Fund", "code": "118989"},
-    {"name": "Axis Small Cap Fund", "code": "120594"},
-    {"name": "SBI Small Cap Fund", "code": "119597"},
-    {"name": "Kotak Equity Opportunities Fund", "code": "119551"},
-    {"name": "Edelweiss Mid Cap Fund", "code": "147769"},
-    {"name": "Invesco India Smallcap Fund", "code": "120686"},
+    {"name": "Quant ELSS Tax Saver Fund", "code": "120847"},
+    {"name": "Nippon India Small Cap Fund", "code": "118778"},
+    {"name": "Invesco India Smallcap Fund", "code": "145137"},
 ]
 
 def find_closest_nav(nav_data, target_date):
