@@ -81,7 +81,15 @@ def auth_login():
 def auth_callback():
     try:
         token = google.authorize_access_token()
-        user_info = google.get('userinfo').json()
+        # Authlib automatically parses the id_token and adds 'userinfo' to the token dict
+        # when 'openid' scope is present.
+        user_info = token.get('userinfo')
+        if not user_info:
+             # Fallback if for some reason it's not in the token (rare with OIDC)
+             # Try to manually fetch using the discovered endpoint
+             resp = google.get('https://openidconnect.googleapis.com/v1/userinfo')
+             user_info = resp.json()
+             
         email = user_info['email']
         
         if email not in ALLOWED_USERS:
