@@ -1,8 +1,8 @@
-from flask import Flask, render_template, send_from_directory, jsonify, request, redirect
+from flask import Flask, render_template, send_from_directory, jsonify, request, redirect, url_for, flash, session
 import pandas as pd
 from fetch_mf_returns import fetch_funds_data, funds
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from functools import wraps
 import logging
 import traceback
@@ -14,12 +14,107 @@ import redis
 from dotenv import load_dotenv
 from apscheduler.schedulers.background import BackgroundScheduler
 import pytz
+from authlib.integrations.flask_client import OAuth
+from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 
 # Load environment variables
 load_dotenv()
 
 app = Flask(__name__)
+# Secure session key
+app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev-secret-key")
+# Session configuration
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
+
 CORS(app)
+
+# --- Authentication Configuration ---
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
+
+oauth = OAuth(app)
+google = oauth.register(
+    name='google',
+    client_id=os.getenv('GOOGLE_CLIENT_ID'),
+    client_secret=os.getenv('GOOGLE_CLIENT_SECRET'),
+    access_token_url='https://accounts.google.com/o/oauth2/token',
+    access_token_params=None,
+    authorize_url='https://accounts.google.com/o/oauth2/auth',
+    authorize_params=None,
+    api_base_url='https://www.googleapis.com/oauth2/v1/',
+    userinfo_endpoint='https://openidconnect.googleapis.com/v1/userinfo',
+    client_kwargs={'scope': 'openid email profile'},
+)
+
+ALLOWED_USERS = ["ishan.kgp@gmail.com"]
+
+class User(UserMixin):
+    def __init__(self, id, email, name):
+        self.id = id
+        self.email = email
+        self.name = name
+
+@login_manager.user_loader
+def load_user(user_id):
+    # In a real app, you'd load from DB. Here we trust the session info if it exists.
+    # Since we don't have a DB, we'll reconstruct User from session if possible, 
+    # but flask-login calls this with the ID. 
+    # For a simple single-user app without DB, we can be a bit hacky or use session directly.
+    # BETTER APPROACH: secure session stores the user info.
+    if 'user_email' in session:
+         return User(session['user_id'], session['user_email'], session.get('user_name', 'User'))
+    return None
+
+@app.route('/login')
+def login():
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+    return render_template('login.html')
+
+@app.route('/auth/login')
+def auth_login():
+    redirect_uri = url_for('auth_callback', _external=True)
+    # Ensure http/https consistency for local dev vs prod
+    if not IS_VERCEL and 'localhost' in redirect_uri:
+        redirect_uri = redirect_uri.replace('https://', 'http://')
+    return google.authorize_redirect(redirect_uri)
+
+@app.route('/auth/callback')
+def auth_callback():
+    try:
+        token = google.authorize_access_token()
+        user_info = google.get('userinfo').json()
+        email = user_info['email']
+        
+        if email not in ALLOWED_USERS:
+            flash("Access denied: You are not authorized to view this application.", "error")
+            return redirect(url_for('login'))
+        
+        # Create user object
+        user = User(user_info['id'], email, user_info['name'])
+        
+        # Login user
+        login_user(user)
+        session['user_id'] = user.id
+        session['user_email'] = user.email
+        session['user_name'] = user.name
+        session.permanent = True
+        
+        return redirect(url_for('index'))
+    except Exception as e:
+        logger.error(f"Auth failed: {e}")
+        flash(f"Authentication failed: {str(e)}", "error")
+        return redirect(url_for('login'))
+
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    session.clear()
+    return redirect(url_for('login'))
+
+# ------------------------------------
 
 IS_VERCEL = os.environ.get('VERCEL') == '1'
 
@@ -168,6 +263,7 @@ def process_fund_data(results):
     return funds_data
 
 @app.route('/')
+@login_required
 def index():
     """Main dashboard page"""
     try:
@@ -199,6 +295,7 @@ def index():
                              details=str(e)), 500
 
 @app.route('/api/funds')
+@login_required
 def api_funds():
     """API endpoint for fund data with improved formatting and performance"""
     try:
@@ -245,6 +342,7 @@ def api_funds():
         return jsonify({"error": str(e), "funds": []}), 500
 
 @app.route('/api/refresh')
+@login_required
 def refresh_data():
     """Force refresh of cached data with improved performance"""
     try:
@@ -376,11 +474,13 @@ if not app.debug or os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
 
 
 @app.route('/api/notes', methods=['GET'])
+@login_required
 def get_notes():
     """Get all notes"""
     return jsonify(load_notes())
 
 @app.route('/api/notes', methods=['POST'])
+@login_required
 def add_note():
     """Add a new note"""
     try:
@@ -405,6 +505,7 @@ def add_note():
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/notes/<int:index>', methods=['DELETE'])
+@login_required
 def delete_note(index):
     """Delete a note by index"""
     try:

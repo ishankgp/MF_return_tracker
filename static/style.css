@@ -551,3 +551,69 @@ body {
         print-color-adjust: exact;
     }
 }
+
+/* ================================================
+   BOOTSTRAP OVERRIDES (Enforce Design System)
+   ================================================ */
+/* Buttons */
+.btn-primary {
+    background-color: var(--color-accent);
+    border-color: var(--color-accent);
+}
+
+.btn-primary:hover {
+    background-color: var(--color-accent-hover);
+    border-color: var(--color-accent-hover);
+}
+
+.btn-outline-primary {
+    color: var(--color-accent);
+    border-color: var(--color-accent);
+}
+
+.btn-outline-primary:hover {
+    background-color: var(--color-accent);
+    border-color: var(--color-accent);
+}
+
+.text-primary {
+    color: var(--color-accent) !important;
+}
+
+/* Year Period Colors (Mapping Bootstrap to Theme) */
+/* Info = 2 Year (Blue-ish) */
+.bg-info {
+    background-color: #0ea5e9 !important;
+    /* Sky blue */
+}
+
+.table-info {
+    background-color: #e0f2fe !important;
+    --bs-table-bg: #e0f2fe;
+}
+
+.text-info {
+    color: #0284c7 !important;
+}
+
+/* Success = 3 Year (Emerald - matches positive) */
+.bg-success {
+    background-color: var(--color-positive) !important;
+}
+
+.table-success {
+    background-color: var(--color-positive-bg) !important;
+    --bs-table-bg: var(--color-positive-bg);
+}
+
+/* Warning = 5 Year (Amber/Orange) */
+.bg-warning {
+    background-color: #f59e0b !important;
+    /* Amber 500 */
+    color: white !important;
+}
+
+.table-warning {
+    background-color: #fef3c7 !important;
+    --bs-table-bg: #fef3c7;
+}
