@@ -97,7 +97,8 @@ def auth_callback():
             return redirect(url_for('login'))
         
         # Create user object
-        user = User(user_info['id'], email, user_info['name'])
+        # Google OIDC uses 'sub' as the unique identifier, not 'id'
+        user = User(user_info.get('sub'), email, user_info.get('name', 'User'))
         
         # Login user
         login_user(user)
