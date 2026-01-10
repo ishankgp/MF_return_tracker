@@ -5,259 +5,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mutual Fund Returns Tracker</title>
+
+    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
-    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;600&display=swap" rel="stylesheet">
+
+    <!-- Modern Font: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <!-- Custom Styles -->
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <style>
-        body {
-            font-family: 'Roboto Mono', sans-serif;
-            color: #333;
-            font-size: 12px;
-        }
-
-        .navbar {
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-
-        .card {
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-
-        .table {
-            border-collapse: separate;
-            border-spacing: 0;
-        }
-
-        .table th,
-        .table td {
-            border: none;
-            padding: 12px 8px;
-        }
-
-        .table th {
-            background-color: #f8f9fa;
-            font-weight: 600;
-        }
-
-        .table tbody tr:hover {
-            background-color: #f1f1f1;
-        }
-
-        .btn {
-            border-radius: 4px;
-            transition: background-color 0.3s;
-        }
-
-        .btn:hover {
-            background-color: #0056b3;
-        }
-
-        .form-control {
-            border-radius: 4px;
-            border: 1px solid #ced4da;
-        }
-
-        .form-control:focus {
-            border-color: #80bdff;
-            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
-        }
-
-        .list-group-item {
-            border-radius: 4px;
-            margin-bottom: 4px;
-        }
-
-        .footer {
-            box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.1);
-        }
-
-        .table-wrapper {
-            overflow-x: visible;
-            margin: 0;
-            padding: 0;
-            width: 100%;
-        }
-
-        .table {
-            min-width: 100%;
-            margin-bottom: 0;
-            table-layout: auto;
-        }
-
-        th {
-            white-space: nowrap;
-            padding: 12px 8px !important;
-        }
-
-        td {
-            padding: 12px 8px !important;
-            white-space: nowrap;
-        }
-
-        .fund-name-column {
-            min-width: 220px;
-        }
-
-        .returns-column {
-            min-width: 120px;
-        }
-
-        .table td,
-        .table th {
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .table td:not(:last-child),
-        .table th:not(:last-child) {
-            padding-right: 16px !important;
-        }
-
-        .navbar-brand {
-            font-size: 1.2rem;
-        }
-
-        .navbar-text {
-            font-size: 0.9rem;
-        }
-
-        .card-header h5 {
-            font-size: 1rem;
-        }
-
-        .card-header h6 {
-            font-size: 0.9rem;
-        }
-
-        .form-label {
-            font-size: 0.9rem;
-        }
-
-        .btn {
-            font-size: 0.9rem;
-        }
-
-        .list-group-item {
-            font-size: 0.9rem;
-        }
-
-        .footer small {
-            font-size: 0.8rem;
-        }
-
-        .notes-section h5 {
-            font-size: 1rem;
-        }
-
-        .notes-section h6 {
-            font-size: 0.9rem;
-        }
-
-        .notes-section .form-label {
-            font-size: 0.9rem;
-        }
-
-        .notes-section .btn {
-            font-size: 0.9rem;
-        }
-
-        .notes-section .list-group-item {
-            font-size: 0.9rem;
-        }
-
-        .loading {
-            opacity: 0.6;
-            pointer-events: none;
-        }
-
-        .refresh-btn {
-            transition: transform 0.3s ease;
-        }
-
-        .refresh-btn:active {
-            transform: rotate(180deg);
-        }
-
-        .clickable-row:hover {
-            background-color: #e9ecef !important;
-        }
-
-        .accordion-icon {
-            transition: transform 0.3s ease;
-            display: inline-block;
-        }
-
-        .clickable-row[aria-expanded="true"] .accordion-icon {
-            transform: rotate(90deg);
-        }
-
-        .accordion-body-cell {
-            padding: 0 !important;
-            background-color: #f8f9fa;
-        }
-
-        .accordion-content {
-            border-left: 3px solid #0d6efd;
-        }
-
-        .accordion-content .card {
-            border: 1px solid #dee2e6;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-        }
-
-        .accordion-content .card-header {
-            font-size: 0.9rem;
-            padding: 0.5rem 0.75rem;
-        }
-
-        .accordion-content table td {
-            padding: 0.4rem 0.5rem;
-            font-size: 0.85rem;
-        }
-
-        /* Comparison Matrix Styling */
-        .sticky-start {
-            position: sticky;
-            left: 0;
-            z-index: 10;
-            background-color: white !important;
-            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
-        }
-
-        .table-bordered th,
-        .table-bordered td {
-            border: 1px solid #dee2e6;
-        }
-
-        #comparisonTabContent .table {
-            font-size: 0.9rem;
-        }
-
-        #comparisonTabContent thead th {
-            font-weight: 600;
-            padding: 0.75rem 0.5rem;
-        }
-
-        #comparisonTabContent tbody td {
-            padding: 0.6rem 0.5rem;
-        }
-
-        .nav-tabs .nav-link {
-            font-size: 0.95rem;
-            font-weight: 500;
-        }
-
-        .nav-tabs .nav-link.active {
-            background-color: #0d6efd;
-            color: white !important;
-        }
-    </style>
 </head>
 
-<body class="bg-light">
+<body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary fixed-top py-1">
         <div class="container-fluid">
             <a class="navbar-brand" href="#">Mutual Fund Returns Tracker</a>
@@ -1171,7 +933,7 @@
                     value: parseFloat(mainRow.cells[column].getAttribute('data-value')) || 0
                 };
             })
-            .sort((a, b) => isAscending ? b.value - a.value : a.value - b.value);
+                .sort((a, b) => isAscending ? b.value - a.value : a.value - b.value);
 
             // Use DocumentFragment for better performance
             const fragment = document.createDocumentFragment();
@@ -1234,7 +996,7 @@
             }
         }
 
-        window.deleteNote = async function(index) {
+        window.deleteNote = async function (index) {
             if (confirm('Are you sure you want to delete this note?')) {
                 try {
                     const response = await fetch(`/api/notes/${index}`, {
@@ -1249,11 +1011,11 @@
             }
         };
 
-        noteForm.addEventListener('submit', async function(e) {
+        noteForm.addEventListener('submit', async function (e) {
             e.preventDefault();
             const date = document.getElementById('noteDate').value;
             const text = document.getElementById('noteText').value;
-            
+
             try {
                 const response = await fetch('/api/notes', {
                     method: 'POST',
@@ -1262,7 +1024,7 @@
                     },
                     body: JSON.stringify({ date, text })
                 });
-                
+
                 if (response.ok) {
                     renderNotes();
                     noteForm.reset();
