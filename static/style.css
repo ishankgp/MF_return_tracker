@@ -128,6 +128,27 @@ body {
 }
 
 /* ================================================
+   SECTION TABS (Portfolio vs Research)
+   ================================================ */
+#sectionTabs .nav-link {
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text-secondary);
+    padding: var(--spacing-sm) var(--spacing-lg);
+    transition: all var(--transition-base);
+}
+
+#sectionTabs .nav-link:hover {
+    color: var(--color-text-primary);
+    background-color: var(--color-border-subtle);
+}
+
+#sectionTabs .nav-link.active {
+    background-color: var(--color-header-bg) !important;
+    color: var(--color-header-text) !important;
+    box-shadow: var(--shadow-sm);
+}
+
+/* ================================================
    CARDS
    ================================================ */
 .card {
