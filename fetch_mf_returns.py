@@ -20,6 +20,8 @@ funds = [
     {"name": "Quant ELSS Tax Saver Fund", "code": "120847"},
     {"name": "Nippon India Small Cap Fund", "code": "118778"},
     {"name": "Invesco India Smallcap Fund", "code": "145137"},
+    {"name": "Tata Small Cap Fund", "code": "145206"},
+    {"name": "HDFC Mid-Cap Opportunities Fund", "code": "118989"},
 ]
 
 def find_closest_nav(nav_data, target_date):
