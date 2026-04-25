@@ -253,7 +253,8 @@ def process_fund_data(results):
                 "dates": result["dates"],
                 "returns": {},
                 "year_breakdown": result.get("year_breakdown", {}),
-                "consistency_score": result.get("consistency_score", 0)
+                "consistency_score": result.get("consistency_score", 0),
+                "is_portfolio": result.get("is_portfolio", False)
             }
             
             # Format returns as numbers or 0 for sorting
@@ -336,6 +337,7 @@ def api_funds():
                 "current_date": result.get("current_date"),
                 "year_breakdown": result.get("year_breakdown", {}),
                 "consistency_score": result.get("consistency_score", 0),  # New Field
+                "is_portfolio": result.get("is_portfolio", False),
                 "category": "Other",
                 "risk": "Medium"
             }

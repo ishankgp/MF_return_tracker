@@ -14,6 +14,7 @@ import json
 import os
 
 FUNDS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'funds.json')
+RESEARCH_FUNDS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'research_funds.json')
 
 DEFAULT_FUNDS = [
     {"name": "Motilal Oswal Midcap Fund", "code": "127042"},
@@ -38,6 +39,16 @@ def load_funds():
     except Exception as e:
         logger.error(f"Error loading funds: {e}")
         return DEFAULT_FUNDS
+
+def load_research_funds():
+    if not os.path.exists(RESEARCH_FUNDS_FILE):
+        return []
+    try:
+        with open(RESEARCH_FUNDS_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception as e:
+        logger.error(f"Error loading research funds: {e}")
+        return []
 
 def save_funds(funds_list):
     try:
@@ -223,7 +234,8 @@ async def fetch_fund_data_async(session, fund, throttler):
                     "returns": returns,
                     "consistency_score": score,  # New Field
                     "dates": dates,
-                    "year_breakdown": year_breakdown
+                    "year_breakdown": year_breakdown,
+                    "is_portfolio": fund.get("is_portfolio", False)
                 }
                 
                 # Cache the result
@@ -243,7 +255,20 @@ async def fetch_all_funds_async():
     # Rate limit: 3 requests per second for better performance
     throttler = Throttler(rate_limit=3, period=1)
     
-    current_funds = load_funds()
+    portfolio_funds = load_funds()
+    research_funds = load_research_funds()
+    
+    # Mark portfolio funds
+    portfolio_codes = {f["code"] for f in portfolio_funds}
+    for f in portfolio_funds:
+        f["is_portfolio"] = True
+        
+    # Add research funds uniquely
+    all_funds = list(portfolio_funds)
+    for f in research_funds:
+        if f["code"] not in portfolio_codes:
+            f["is_portfolio"] = False
+            all_funds.append(f)
     
     async with aiohttp.ClientSession(
         timeout=aiohttp.ClientTimeout(total=30),
@@ -251,7 +276,7 @@ async def fetch_all_funds_async():
     ) as session:
         tasks = [
             fetch_fund_data_async(session, fund, throttler) 
-            for fund in current_funds
+            for fund in all_funds
         ]
         
         results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -260,7 +285,7 @@ async def fetch_all_funds_async():
         valid_results = []
         for i, result in enumerate(results):
             if isinstance(result, Exception):
-                logger.error(f"Exception for fund {current_funds[i]['name']}: {str(result)}")
+                logger.error(f"Exception for fund {all_funds[i]['name']}: {str(result)}")
             elif result is not None:
                 valid_results.append(result)
         

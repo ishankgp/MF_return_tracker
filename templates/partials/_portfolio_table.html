@@ -42,7 +42,7 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for fund in funds %}
+                                    {% for fund in funds if fund.is_portfolio %}
                                     <!-- Main row - clickable -->
                                     <tr class="fund-row clickable-row" data-bs-toggle="collapse"
                                         data-bs-target="#collapse-{{ loop.index }}" aria-expanded="false"

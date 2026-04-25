@@ -8,6 +8,12 @@
                                 <small class="text-muted">Ranked by weighted consistency score (50% 3Y + 30% 2Y + 20%
                                     1Y)</small>
                             </div>
+                            <div>
+                                <div class="form-check form-switch mt-2 mt-md-0">
+                                    <input class="form-check-input" type="checkbox" id="portfolioFilterToggle">
+                                    <label class="form-check-label fw-bold text-dark" for="portfolioFilterToggle">Show My Portfolio Only</label>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div class="card-body p-0">
@@ -26,13 +32,13 @@
                                 </thead>
                                 <tbody>
                                     {% for fund in funds|sort(attribute='consistency_score', reverse=True) %}
-                                    <tr>
-                                        <td class="text-center">
+                                    <tr class="research-fund-row" data-is-portfolio="{{ 'true' if fund.is_portfolio else 'false' }}">
+                                        <td class="text-center" data-original-rank="{{ loop.index }}">
                                             {% if loop.index <= 3 %} <span
-                                                class="badge rounded-pill bg-warning text-dark border border-warning">
+                                                class="badge rounded-pill bg-warning text-dark border border-warning rank-display">
                                                 #{{ loop.index }}</span>
                                                 {% else %}
-                                                <span class="text-muted fw-bold">#{{ loop.index }}</span>
+                                                <span class="text-muted fw-bold rank-display">#{{ loop.index }}</span>
                                                 {% endif %}
                                         </td>
                                         <td>
@@ -74,3 +80,34 @@
                 </div>
             </div>
         </div>
+        <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const toggle = document.getElementById('portfolioFilterToggle');
+            if(toggle) {
+                toggle.addEventListener('change', function() {
+                    const showPortfolioOnly = this.checked;
+                    const rows = document.querySelectorAll('.research-fund-row');
+                    
+                    let visibleRank = 1;
+                    rows.forEach(row => {
+                        if(showPortfolioOnly) {
+                            if(row.getAttribute('data-is-portfolio') === 'true') {
+                                row.style.display = '';
+                                // Update rank badge visually
+                                const rankBadge = row.querySelector('.rank-display');
+                                if(rankBadge) rankBadge.textContent = '#' + visibleRank;
+                                visibleRank++;
+                            } else {
+                                row.style.display = 'none';
+                            }
+                        } else {
+                            row.style.display = '';
+                            // Restore original rank
+                            const rankBadge = row.querySelector('.rank-display');
+                            if(rankBadge) rankBadge.textContent = '#' + row.getAttribute('data-original-rank');
+                        }
+                    });
+                });
+            }
+        });
+        </script>

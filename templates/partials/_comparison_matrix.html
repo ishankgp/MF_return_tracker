@@ -70,7 +70,7 @@
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {% for fund in funds %}
+                                            {% for fund in funds if fund.is_portfolio %}
                                             <tr>
                                                 <td class="sticky-start bg-white" data-value="{{ fund.name }}">
                                                     <strong>{{
@@ -185,7 +185,7 @@
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {% for fund in funds %}
+                                            {% for fund in funds if fund.is_portfolio %}
                                             <tr>
                                                 <td class="sticky-start bg-white" data-value="{{ fund.name }}">
                                                     <strong>{{
@@ -315,7 +315,7 @@
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {% for fund in funds %}
+                                            {% for fund in funds if fund.is_portfolio %}
                                             <tr>
                                                 <td class="sticky-start bg-white" data-value="{{ fund.name }}">
                                                     <strong>{{
