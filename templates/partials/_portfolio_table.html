@@ -1,0 +1,454 @@
+                <div class="card shadow-sm" id="tableViewContainer">
+                    <div class="table-wrapper card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover table-striped align-middle" id="fundTable">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="fund-name-column">Fund Name</th>
+                                        <th class="amfi-code-column">AMFI Code</th>
+                                        <th class="nav-column">Current NAV<br><small class="text-muted">({{
+                                                funds[0].current_date }})</small></th>
+                                        <th class="returns-column sortable" data-sort="1day">1 Day <i
+                                                class="bi bi-arrow-down-up"></i><br><small class="text-muted">({{
+                                                funds[0].dates['1day'] }})</small></th>
+                                        <th class="returns-column sortable" data-sort="1week">1 Week <i
+                                                class="bi bi-arrow-down-up"></i><br><small class="text-muted">({{
+                                                funds[0].dates['1week'] }})</small></th>
+                                        <th class="returns-column sortable" data-sort="1month">1 Month <i
+                                                class="bi bi-arrow-down-up"></i><br><small class="text-muted">({{
+                                                funds[0].dates['1month'] }})</small></th>
+                                        <th class="returns-column sortable d-none d-md-table-cell" data-sort="3month">3
+                                            Months
+                                            <i class="bi bi-arrow-down-up"></i><br><small class="text-muted">({{
+                                                funds[0].dates['3month'] }})</small>
+                                        </th>
+                                        <th class="returns-column sortable d-none d-md-table-cell" data-sort="6month">6
+                                            Months
+                                            <i class="bi bi-arrow-down-up"></i><br><small class="text-muted">({{
+                                                funds[0].dates['6month'] }})</small>
+                                        </th>
+                                        <th class="returns-column sortable" data-sort="1year">1 Year <i
+                                                class="bi bi-arrow-down-up"></i><br><small class="text-muted">({{
+                                                funds[0].dates['1year'] }})</small></th>
+                                        <th class="returns-column sortable" data-sort="2year">2 Years <i
+                                                class="bi bi-arrow-down-up"></i><br><small class="text-muted">({{
+                                                funds[0].dates['2year'] }})</small></th>
+                                        <th class="returns-column sortable" data-sort="3year">3 Years <i
+                                                class="bi bi-arrow-down-up"></i><br><small class="text-muted">({{
+                                                funds[0].dates['3year'] }})</small></th>
+                                        <th class="returns-column sortable" data-sort="5year">5 Years <i
+                                                class="bi bi-arrow-down-up"></i><br><small class="text-muted">({{
+                                                funds[0].dates['5year'] }})</small></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for fund in funds %}
+                                    <!-- Main row - clickable -->
+                                    <tr class="fund-row clickable-row" data-bs-toggle="collapse"
+                                        data-bs-target="#collapse-{{ loop.index }}" aria-expanded="false"
+                                        style="cursor: pointer;">
+                                        <td class="fund-name-cell">
+                                            <i class="bi bi-chevron-right accordion-icon me-2"></i>
+                                            <span class="fund-name">{{ fund.name }}</span>
+                                        </td>
+                                        <td>
+                                            <span class="amfi-code">{{ fund.code }}</span>
+                                        </td>
+                                        <td>
+                                            <span class="current-nav-value">₹{{ fund.current_nav }}</span>
+                                        </td>
+                                        <td class="{% if fund.returns['1day'] == 0 %}text-muted{% elif fund.returns['1day'] < 0 %}text-danger{% else %}text-success{% endif %}"
+                                            data-value="{{ fund.returns['1day'] }}">
+                                            {% if fund.returns['1day'] == 0 %}NA{% else %}{{
+                                            "%.2f"|format(fund.returns['1day'])
+                                            }}%{% endif %}
+                                        </td>
+                                        <td class="{% if fund.returns['1week'] == 0 %}text-muted{% elif fund.returns['1week'] < 0 %}text-danger{% else %}text-success{% endif %}"
+                                            data-value="{{ fund.returns['1week'] }}">
+                                            {% if fund.returns['1week'] == 0 %}NA{% else %}{{
+                                            "%.2f"|format(fund.returns['1week']) }}%{% endif %}
+                                        </td>
+                                        <td class="{% if fund.returns['1month'] == 0 %}text-muted{% elif fund.returns['1month'] < 0 %}text-danger{% else %}text-success{% endif %}"
+                                            data-value="{{ fund.returns['1month'] }}">
+                                            {% if fund.returns['1month'] == 0 %}NA{% else %}{{
+                                            "%.2f"|format(fund.returns['1month']) }}%{% endif %}
+                                        </td>
+                                        <td class="{% if fund.returns['3month'] == 0 %}text-muted{% elif fund.returns['3month'] < 0 %}text-danger{% else %}text-success{% endif %} d-none d-md-table-cell"
+                                            data-value="{{ fund.returns['3month'] }}">
+                                            {% if fund.returns['3month'] == 0 %}NA{% else %}{{
+                                            "%.2f"|format(fund.returns['3month']) }}%{% endif %}
+                                        </td>
+                                        <td class="{% if fund.returns['6month'] == 0 %}text-muted{% elif fund.returns['6month'] < 0 %}text-danger{% else %}text-success{% endif %} d-none d-md-table-cell"
+                                            data-value="{{ fund.returns['6month'] }}">
+                                            {% if fund.returns['6month'] == 0 %}NA{% else %}{{
+                                            "%.2f"|format(fund.returns['6month']) }}%{% endif %}
+                                        </td>
+                                        <td class="{% if fund.returns['1year'] == 0 %}text-muted{% elif fund.returns['1year'] < 0 %}text-danger{% else %}text-success{% endif %}"
+                                            data-value="{{ fund.returns['1year'] }}">
+                                            {% if fund.returns['1year'] == 0 %}NA{% else %}{{
+                                            "%.2f"|format(fund.returns['1year']) }}%{% endif %}
+                                        </td>
+                                        <td class="{% if fund.returns['2year'] == 0 %}text-muted{% elif fund.returns['2year'] < 0 %}text-danger{% else %}text-success{% endif %}"
+                                            data-value="{{ fund.returns['2year'] }}">
+                                            {% if fund.returns['2year'] == 0 %}NA{% else %}{{
+                                            "%.2f"|format(fund.returns['2year']) }}%{% endif %}
+                                        </td>
+                                        <td class="{% if fund.returns['3year'] == 0 %}text-muted{% elif fund.returns['3year'] < 0 %}text-danger{% else %}text-success{% endif %}"
+                                            data-value="{{ fund.returns['3year'] }}">
+                                            {% if fund.returns['3year'] == 0 %}NA{% else %}{{
+                                            "%.2f"|format(fund.returns['3year']) }}%{% endif %}
+                                        </td>
+                                        <td class="{% if fund.returns['5year'] == 0 %}text-muted{% elif fund.returns['5year'] < 0 %}text-danger{% else %}text-success{% endif %}"
+                                            data-value="{{ fund.returns['5year'] }}">
+                                            {% if fund.returns['5year'] == 0 %}NA{% else %}{{
+                                            "%.2f"|format(fund.returns['5year']) }}%{% endif %}
+                                        </td>
+                                    </tr>
+
+                                    <!-- Expanded accordion row -->
+                                    <tr class="collapse accordion-collapse" id="collapse-{{ loop.index }}">
+                                        <td colspan="11" class="accordion-body-cell">
+                                            <div class="accordion-content p-4 bg-light">
+                                                <h6 class="mb-3 text-primary"><i
+                                                        class="bi bi-graph-up me-2"></i>Complete
+                                                    Returns Analysis</h6>
+
+                                                {% if fund.year_breakdown and (fund.year_breakdown.get('2year') or
+                                                fund.year_breakdown.get('3year') or fund.year_breakdown.get('5year')) %}
+                                                <div class="card shadow-sm">
+                                                    <div class="card-body p-0">
+                                                        <div class="table-responsive">
+                                                            <table class="table table-sm mb-0">
+                                                                <thead class="table-primary">
+                                                                    <tr>
+                                                                        <th style="width: 45%;">Period</th>
+                                                                        <th class="text-end" style="width: 20%;">Return
+                                                                            %</th>
+                                                                        <th class="text-end" style="width: 20%;">Total
+                                                                            Absolute
+                                                                        </th>
+                                                                        <th class="text-end" style="width: 15%;">CAGR
+                                                                        </th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody>
+                                                                    {% if fund.year_breakdown.get('5year') and
+                                                                    fund.year_breakdown['5year'].get('year_dates') %}
+                                                                    <tr class="table-light">
+                                                                        <td><strong>Year 1</strong> <small
+                                                                                class="text-muted">({{
+                                                                                fund.year_breakdown['5year']['year_dates']['year1_start']
+                                                                                }} to {{
+                                                                                fund.year_breakdown['5year']['year_dates']['year1_end']
+                                                                                }})</small></td>
+                                                                        <td
+                                                                            class="text-end {% if fund.year_breakdown['5year']['year1'] >= 0 %}text-success fw-bold{% else %}text-danger fw-bold{% endif %}">
+                                                                            {% if fund.year_breakdown['5year']['year1']
+                                                                            >= 0
+                                                                            %}<i
+                                                                                class="bi bi-arrow-up-circle-fill me-1"></i>{%
+                                                                            else %}<i
+                                                                                class="bi bi-arrow-down-circle-fill me-1"></i>{%
+                                                                            endif %}
+                                                                            {{
+                                                                            "%.2f"|format(fund.year_breakdown['5year']['year1'])
+                                                                            }}%
+                                                                        </td>
+                                                                        <td class="text-end text-muted">—</td>
+                                                                        <td class="text-end text-muted">—</td>
+                                                                    </tr>
+                                                                    <tr class="table-light">
+                                                                        <td><strong>Year 2</strong> <small
+                                                                                class="text-muted">({{
+                                                                                fund.year_breakdown['5year']['year_dates']['year2_start']
+                                                                                }} to {{
+                                                                                fund.year_breakdown['5year']['year_dates']['year2_end']
+                                                                                }})</small></td>
+                                                                        <td
+                                                                            class="text-end {% if fund.year_breakdown['5year']['year2'] >= 0 %}text-success fw-bold{% else %}text-danger fw-bold{% endif %}">
+                                                                            {% if fund.year_breakdown['5year']['year2']
+                                                                            >= 0
+                                                                            %}<i
+                                                                                class="bi bi-arrow-up-circle-fill me-1"></i>{%
+                                                                            else %}<i
+                                                                                class="bi bi-arrow-down-circle-fill me-1"></i>{%
+                                                                            endif %}
+                                                                            {{
+                                                                            "%.2f"|format(fund.year_breakdown['5year']['year2'])
+                                                                            }}%
+                                                                        </td>
+                                                                        <td class="text-end text-muted">—</td>
+                                                                        <td class="text-end text-muted">—</td>
+                                                                    </tr>
+                                                                    <tr class="table-light">
+                                                                        <td><strong>Year 3</strong> <small
+                                                                                class="text-muted">({{
+                                                                                fund.year_breakdown['5year']['year_dates']['year3_start']
+                                                                                }} to {{
+                                                                                fund.year_breakdown['5year']['year_dates']['year3_end']
+                                                                                }})</small></td>
+                                                                        <td
+                                                                            class="text-end {% if fund.year_breakdown['5year']['year3'] >= 0 %}text-success fw-bold{% else %}text-danger fw-bold{% endif %}">
+                                                                            {% if fund.year_breakdown['5year']['year3']
+                                                                            >= 0
+                                                                            %}<i
+                                                                                class="bi bi-arrow-up-circle-fill me-1"></i>{%
+                                                                            else %}<i
+                                                                                class="bi bi-arrow-down-circle-fill me-1"></i>{%
+                                                                            endif %}
+                                                                            {{
+                                                                            "%.2f"|format(fund.year_breakdown['5year']['year3'])
+                                                                            }}%
+                                                                        </td>
+                                                                        <td class="text-end text-muted">—</td>
+                                                                        <td class="text-end text-muted">—</td>
+                                                                    </tr>
+                                                                    <tr class="table-light">
+                                                                        <td><strong>Year 4</strong> <small
+                                                                                class="text-muted">({{
+                                                                                fund.year_breakdown['5year']['year_dates']['year4_start']
+                                                                                }} to {{
+                                                                                fund.year_breakdown['5year']['year_dates']['year4_end']
+                                                                                }})</small></td>
+                                                                        <td
+                                                                            class="text-end {% if fund.year_breakdown['5year']['year4'] >= 0 %}text-success fw-bold{% else %}text-danger fw-bold{% endif %}">
+                                                                            {% if fund.year_breakdown['5year']['year4']
+                                                                            >= 0
+                                                                            %}<i
+                                                                                class="bi bi-arrow-up-circle-fill me-1"></i>{%
+                                                                            else %}<i
+                                                                                class="bi bi-arrow-down-circle-fill me-1"></i>{%
+                                                                            endif %}
+                                                                            {{
+                                                                            "%.2f"|format(fund.year_breakdown['5year']['year4'])
+                                                                            }}%
+                                                                        </td>
+                                                                        <td class="text-end text-muted">—</td>
+                                                                        <td class="text-end text-muted">—</td>
+                                                                    </tr>
+                                                                    <tr class="table-light">
+                                                                        <td><strong>Year 5</strong> <small
+                                                                                class="text-muted">({{
+                                                                                fund.year_breakdown['5year']['year_dates']['year5_start']
+                                                                                }} to {{
+                                                                                fund.year_breakdown['5year']['year_dates']['year5_end']
+                                                                                }})</small></td>
+                                                                        <td
+                                                                            class="text-end {% if fund.year_breakdown['5year']['year5'] >= 0 %}text-success fw-bold{% else %}text-danger fw-bold{% endif %}">
+                                                                            {% if fund.year_breakdown['5year']['year5']
+                                                                            >= 0
+                                                                            %}<i
+                                                                                class="bi bi-arrow-up-circle-fill me-1"></i>{%
+                                                                            else %}<i
+                                                                                class="bi bi-arrow-down-circle-fill me-1"></i>{%
+                                                                            endif %}
+                                                                            {{
+                                                                            "%.2f"|format(fund.year_breakdown['5year']['year5'])
+                                                                            }}%
+                                                                        </td>
+                                                                        <td class="text-end text-muted">—</td>
+                                                                        <td class="text-end text-muted">—</td>
+                                                                    </tr>
+                                                                    {% elif fund.year_breakdown.get('3year') and
+                                                                    fund.year_breakdown['3year'].get('year_dates') %}
+                                                                    <tr class="table-light">
+                                                                        <td><strong>Year 1</strong> <small
+                                                                                class="text-muted">({{
+                                                                                fund.year_breakdown['3year']['year_dates']['year1_start']
+                                                                                }} to {{
+                                                                                fund.year_breakdown['3year']['year_dates']['year1_end']
+                                                                                }})</small></td>
+                                                                        <td
+                                                                            class="text-end {% if fund.year_breakdown['3year']['year1'] >= 0 %}text-success fw-bold{% else %}text-danger fw-bold{% endif %}">
+                                                                            {% if fund.year_breakdown['3year']['year1']
+                                                                            >= 0
+                                                                            %}<i
+                                                                                class="bi bi-arrow-up-circle-fill me-1"></i>{%
+                                                                            else %}<i
+                                                                                class="bi bi-arrow-down-circle-fill me-1"></i>{%
+                                                                            endif %}
+                                                                            {{
+                                                                            "%.2f"|format(fund.year_breakdown['3year']['year1'])
+                                                                            }}%
+                                                                        </td>
+                                                                        <td class="text-end text-muted">—</td>
+                                                                        <td class="text-end text-muted">—</td>
+                                                                    </tr>
+                                                                    <tr class="table-light">
+                                                                        <td><strong>Year 2</strong> <small
+                                                                                class="text-muted">({{
+                                                                                fund.year_breakdown['3year']['year_dates']['year2_start']
+                                                                                }} to {{
+                                                                                fund.year_breakdown['3year']['year_dates']['year2_end']
+                                                                                }})</small></td>
+                                                                        <td
+                                                                            class="text-end {% if fund.year_breakdown['3year']['year2'] >= 0 %}text-success fw-bold{% else %}text-danger fw-bold{% endif %}">
+                                                                            {% if fund.year_breakdown['3year']['year2']
+                                                                            >= 0
+                                                                            %}<i
+                                                                                class="bi bi-arrow-up-circle-fill me-1"></i>{%
+                                                                            else %}<i
+                                                                                class="bi bi-arrow-down-circle-fill me-1"></i>{%
+                                                                            endif %}
+                                                                            {{
+                                                                            "%.2f"|format(fund.year_breakdown['3year']['year2'])
+                                                                            }}%
+                                                                        </td>
+                                                                        <td class="text-end text-muted">—</td>
+                                                                        <td class="text-end text-muted">—</td>
+                                                                    </tr>
+                                                                    <tr class="table-light">
+                                                                        <td><strong>Year 3</strong> <small
+                                                                                class="text-muted">({{
+                                                                                fund.year_breakdown['3year']['year_dates']['year3_start']
+                                                                                }} to {{
+                                                                                fund.year_breakdown['3year']['year_dates']['year3_end']
+                                                                                }})</small></td>
+                                                                        <td
+                                                                            class="text-end {% if fund.year_breakdown['3year']['year3'] >= 0 %}text-success fw-bold{% else %}text-danger fw-bold{% endif %}">
+                                                                            {% if fund.year_breakdown['3year']['year3']
+                                                                            >= 0
+                                                                            %}<i
+                                                                                class="bi bi-arrow-up-circle-fill me-1"></i>{%
+                                                                            else %}<i
+                                                                                class="bi bi-arrow-down-circle-fill me-1"></i>{%
+                                                                            endif %}
+                                                                            {{
+                                                                            "%.2f"|format(fund.year_breakdown['3year']['year3'])
+                                                                            }}%
+                                                                        </td>
+                                                                        <td class="text-end text-muted">—</td>
+                                                                        <td class="text-end text-muted">—</td>
+                                                                    </tr>
+                                                                    {% elif fund.year_breakdown.get('2year') and
+                                                                    fund.year_breakdown['2year'].get('year_dates') %}
+                                                                    <tr class="table-light">
+                                                                        <td><strong>Year 1</strong> <small
+                                                                                class="text-muted">({{
+                                                                                fund.year_breakdown['2year']['year_dates']['year1_start']
+                                                                                }} to {{
+                                                                                fund.year_breakdown['2year']['year_dates']['year1_end']
+                                                                                }})</small></td>
+                                                                        <td
+                                                                            class="text-end {% if fund.year_breakdown['2year']['year1'] >= 0 %}text-success fw-bold{% else %}text-danger fw-bold{% endif %}">
+                                                                            {% if fund.year_breakdown['2year']['year1']
+                                                                            >= 0
+                                                                            %}<i
+                                                                                class="bi bi-arrow-up-circle-fill me-1"></i>{%
+                                                                            else %}<i
+                                                                                class="bi bi-arrow-down-circle-fill me-1"></i>{%
+                                                                            endif %}
+                                                                            {{
+                                                                            "%.2f"|format(fund.year_breakdown['2year']['year1'])
+                                                                            }}%
+                                                                        </td>
+                                                                        <td class="text-end text-muted">—</td>
+                                                                        <td class="text-end text-muted">—</td>
+                                                                    </tr>
+                                                                    <tr class="table-light">
+                                                                        <td><strong>Year 2</strong> <small
+                                                                                class="text-muted">({{
+                                                                                fund.year_breakdown['2year']['year_dates']['year2_start']
+                                                                                }} to {{
+                                                                                fund.year_breakdown['2year']['year_dates']['year2_end']
+                                                                                }})</small></td>
+                                                                        <td
+                                                                            class="text-end {% if fund.year_breakdown['2year']['year2'] >= 0 %}text-success fw-bold{% else %}text-danger fw-bold{% endif %}">
+                                                                            {% if fund.year_breakdown['2year']['year2']
+                                                                            >= 0
+                                                                            %}<i
+                                                                                class="bi bi-arrow-up-circle-fill me-1"></i>{%
+                                                                            else %}<i
+                                                                                class="bi bi-arrow-down-circle-fill me-1"></i>{%
+                                                                            endif %}
+                                                                            {{
+                                                                            "%.2f"|format(fund.year_breakdown['2year']['year2'])
+                                                                            }}%
+                                                                        </td>
+                                                                        <td class="text-end text-muted">—</td>
+                                                                        <td class="text-end text-muted">—</td>
+                                                                    </tr>
+                                                                    {% endif %}
+
+                                                                    <!-- Multi-Year Summary in same table -->
+                                                                    <tr class="table-secondary">
+                                                                        <td colspan="4" class="text-center fw-bold"><i
+                                                                                class="bi bi-calculator me-2"></i>MULTI-YEAR
+                                                                            SUMMARY</td>
+                                                                    </tr>
+
+                                                                    {% if fund.year_breakdown.get('2year') %}
+                                                                    <tr class="table-info">
+                                                                        <td><strong class="text-primary">2-Year
+                                                                                Period</strong>
+                                                                        </td>
+                                                                        <td class="text-end text-muted">—</td>
+                                                                        <td
+                                                                            class="text-end {% if fund.year_breakdown['2year']['total_absolute'] >= 0 %}text-success{% else %}text-danger{% endif %} fw-bold fs-6">
+                                                                            {{
+                                                                            "%.2f"|format(fund.year_breakdown['2year']['total_absolute'])
+                                                                            }}%
+                                                                        </td>
+                                                                        <td class="text-end text-secondary fw-bold">{{
+                                                                            "%.2f"|format(fund.returns['2year']) }}%
+                                                                        </td>
+                                                                    </tr>
+                                                                    {% endif %}
+
+                                                                    {% if fund.year_breakdown.get('3year') %}
+                                                                    <tr class="table-success">
+                                                                        <td><strong class="text-success">3-Year
+                                                                                Period</strong>
+                                                                        </td>
+                                                                        <td class="text-end text-muted">—</td>
+                                                                        <td
+                                                                            class="text-end {% if fund.year_breakdown['3year']['total_absolute'] >= 0 %}text-success{% else %}text-danger{% endif %} fw-bold fs-6">
+                                                                            {{
+                                                                            "%.2f"|format(fund.year_breakdown['3year']['total_absolute'])
+                                                                            }}%
+                                                                        </td>
+                                                                        <td class="text-end text-secondary fw-bold">{{
+                                                                            "%.2f"|format(fund.returns['3year']) }}%
+                                                                        </td>
+                                                                    </tr>
+                                                                    {% endif %}
+
+                                                                    {% if fund.year_breakdown.get('5year') %}
+                                                                    <tr class="table-warning">
+                                                                        <td><strong class="text-info">5-Year
+                                                                                Period</strong>
+                                                                        </td>
+                                                                        <td class="text-end text-muted">—</td>
+                                                                        <td
+                                                                            class="text-end {% if fund.year_breakdown['5year']['total_absolute'] >= 0 %}text-success{% else %}text-danger{% endif %} fw-bold fs-6">
+                                                                            {{
+                                                                            "%.2f"|format(fund.year_breakdown['5year']['total_absolute'])
+                                                                            }}%
+                                                                        </td>
+                                                                        <td class="text-end text-secondary fw-bold">{{
+                                                                            "%.2f"|format(fund.returns['5year']) }}%
+                                                                        </td>
+                                                                    </tr>
+                                                                    {% endif %}
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                {% else %}
+                                                <div class="alert alert-info mb-0">
+                                                    <i class="bi bi-info-circle me-2"></i>Year-by-year breakdown not
+                                                    available
+                                                    for this fund.
+                                                </div>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+

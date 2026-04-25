@@ -1,0 +1,76 @@
+            <div class="tab-pane fade" id="research-section" role="tabpanel">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-white border-bottom py-3">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div>
+                                <h5 class="mb-1 text-primary"><i class="bi bi-trophy me-2"></i>Top Funds by Consistency
+                                </h5>
+                                <small class="text-muted">Ranked by weighted consistency score (50% 3Y + 30% 2Y + 20%
+                                    1Y)</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="text-center" style="width: 60px;">Rank</th>
+                                        <th>Fund Name</th>
+                                        <th class="text-center">Consistency Score</th>
+                                        <th class="text-end">1 Year</th>
+                                        <th class="text-end">2 Years</th>
+                                        <th class="text-end">3 Years</th>
+                                        <th class="text-end">5 Years</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for fund in funds|sort(attribute='consistency_score', reverse=True) %}
+                                    <tr>
+                                        <td class="text-center">
+                                            {% if loop.index <= 3 %} <span
+                                                class="badge rounded-pill bg-warning text-dark border border-warning">
+                                                #{{ loop.index }}</span>
+                                                {% else %}
+                                                <span class="text-muted fw-bold">#{{ loop.index }}</span>
+                                                {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="fw-bold text-dark">{{ fund.name }}</div>
+                                            <small class="text-muted">{{ fund.code }}</small>
+                                        </td>
+                                        <td class="text-center">
+                                            <div class="d-flex flex-column align-items-center">
+                                                <span class="h5 mb-0 text-primary fw-bold">{{
+                                                    "%.1f"|format(fund.consistency_score) }}</span>
+                                                <div class="progress w-75 mt-1" style="height: 4px;">
+                                                    <div class="progress-bar" role="progressbar"
+                                                        style="width: {{ fund.consistency_score }}%"></div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td
+                                            class="text-end {% if fund.returns['1year'] >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                            {{ "%.2f"|format(fund.returns['1year']) }}%
+                                        </td>
+                                        <td
+                                            class="text-end {% if fund.returns['2year'] >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                            {{ "%.2f"|format(fund.returns['2year']) }}%
+                                        </td>
+                                        <td
+                                            class="text-end {% if fund.returns['3year'] >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                            {{ "%.2f"|format(fund.returns['3year']) }}%
+                                        </td>
+                                        <td
+                                            class="text-end {% if fund.returns['5year'] >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                            {{ "%.2f"|format(fund.returns['5year']) }}%
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>

@@ -1,0 +1,394 @@
+                <div class="card shadow-sm" id="comparisonViewContainer" style="display: none;">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0"><i class="bi bi-grid-3x3-gap me-2"></i>Comparison Matrix</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <!-- Tabs Navigation -->
+                        <ul class="nav nav-tabs nav-fill" id="comparisonTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="shortTermTab" data-bs-toggle="tab"
+                                    data-bs-target="#shortTermPane" type="button">
+                                    <i class="bi bi-clock-history me-1"></i>Short-term (1D - 1Y)
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="yearlyTab" data-bs-toggle="tab"
+                                    data-bs-target="#yearlyPane" type="button">
+                                    <i class="bi bi-calendar-range me-1"></i>Year-by-Year (Y1-Y5)
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="summaryTab" data-bs-toggle="tab"
+                                    data-bs-target="#summaryPane" type="button">
+                                    <i class="bi bi-calculator me-1"></i>Multi-Year Summary
+                                </button>
+                            </li>
+                        </ul>
+
+                        <!-- Tab Content -->
+                        <div class="tab-content p-3" id="comparisonTabContent">
+                            <!-- Tab 1: Short-term Performance -->
+                            <div class="tab-pane fade show active" id="shortTermPane">
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-hover table-bordered mb-0" id="shortTermTable">
+                                        <thead class="table-light sticky-top">
+                                            <tr>
+                                                <th class="sticky-start bg-white sortable-header" data-column="0"
+                                                    style="cursor: pointer;">
+                                                    Fund Name <i class="bi bi-arrow-down-up"></i>
+                                                </th>
+                                                <th class="text-end sortable-header" data-column="1"
+                                                    style="cursor: pointer;">
+                                                    <div>1 Day <i class="bi bi-arrow-down-up"></i></div>
+                                                    <small class="text-muted">({{ funds[0].dates['1day'] }})</small>
+                                                </th>
+                                                <th class="text-end sortable-header" data-column="2"
+                                                    style="cursor: pointer;">
+                                                    <div>1 Week <i class="bi bi-arrow-down-up"></i></div>
+                                                    <small class="text-muted">({{ funds[0].dates['1week'] }})</small>
+                                                </th>
+                                                <th class="text-end sortable-header" data-column="3"
+                                                    style="cursor: pointer;">
+                                                    <div>1 Month <i class="bi bi-arrow-down-up"></i></div>
+                                                    <small class="text-muted">({{ funds[0].dates['1month'] }})</small>
+                                                </th>
+                                                <th class="text-end sortable-header" data-column="4"
+                                                    style="cursor: pointer;">
+                                                    <div>3 Months <i class="bi bi-arrow-down-up"></i></div>
+                                                    <small class="text-muted">({{ funds[0].dates['3month'] }})</small>
+                                                </th>
+                                                <th class="text-end sortable-header" data-column="5"
+                                                    style="cursor: pointer;">
+                                                    <div>6 Months <i class="bi bi-arrow-down-up"></i></div>
+                                                    <small class="text-muted">({{ funds[0].dates['6month'] }})</small>
+                                                </th>
+                                                <th class="text-end sortable-header" data-column="6"
+                                                    style="cursor: pointer;">
+                                                    <div>1 Year <i class="bi bi-arrow-down-up"></i></div>
+                                                    <small class="text-muted">({{ funds[0].dates['1year'] }})</small>
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for fund in funds %}
+                                            <tr>
+                                                <td class="sticky-start bg-white" data-value="{{ fund.name }}">
+                                                    <strong>{{
+                                                        fund.name }}</strong>
+                                                </td>
+                                                <td class="text-end {% if fund.returns['1day'] >= 0 %}text-success{% else %}text-danger{% endif %}"
+                                                    data-value="{{ fund.returns['1day'] }}">
+                                                    {{ "%.2f"|format(fund.returns['1day']) }}%
+                                                </td>
+                                                <td class="text-end {% if fund.returns['1week'] >= 0 %}text-success{% else %}text-danger{% endif %}"
+                                                    data-value="{{ fund.returns['1week'] }}">
+                                                    {{ "%.2f"|format(fund.returns['1week']) }}%
+                                                </td>
+                                                <td class="text-end {% if fund.returns['1month'] >= 0 %}text-success{% else %}text-danger{% endif %}"
+                                                    data-value="{{ fund.returns['1month'] }}">
+                                                    {{ "%.2f"|format(fund.returns['1month']) }}%
+                                                </td>
+                                                <td class="text-end {% if fund.returns['3month'] >= 0 %}text-success{% else %}text-danger{% endif %}"
+                                                    data-value="{{ fund.returns['3month'] }}">
+                                                    {{ "%.2f"|format(fund.returns['3month']) }}%
+                                                </td>
+                                                <td class="text-end {% if fund.returns['6month'] >= 0 %}text-success{% else %}text-danger{% endif %}"
+                                                    data-value="{{ fund.returns['6month'] }}">
+                                                    {{ "%.2f"|format(fund.returns['6month']) }}%
+                                                </td>
+                                                <td class="text-end {% if fund.returns['1year'] >= 0 %}text-success{% else %}text-danger{% endif %}"
+                                                    data-value="{{ fund.returns['1year'] }}">
+                                                    {{ "%.2f"|format(fund.returns['1year']) }}%
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- Tab 2: Year-by-Year Returns -->
+                            <div class="tab-pane fade" id="yearlyPane">
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-hover table-bordered mb-0" id="yearlyTable">
+                                        <thead class="table-light sticky-top">
+                                            <tr>
+                                                <th class="sticky-start bg-white sortable-header" data-column="0"
+                                                    style="cursor: pointer;">
+                                                    Fund Name <i class="bi bi-arrow-down-up"></i>
+                                                </th>
+                                                {% set first_fund_with_data =
+                                                funds|selectattr('year_breakdown.5year.year_dates', 'defined')|first %}
+                                                {% if first_fund_with_data %}
+                                                <th class="text-end sortable-header" data-column="1"
+                                                    style="cursor: pointer;">
+                                                    <div>Year 1 <i class="bi bi-arrow-down-up"></i></div>
+                                                    <small class="text-muted">({{
+                                                        first_fund_with_data.year_breakdown['5year']['year_dates']['year1_start']
+                                                        }} to {{
+                                                        first_fund_with_data.year_breakdown['5year']['year_dates']['year1_end']
+                                                        }})</small>
+                                                </th>
+                                                <th class="text-end sortable-header" data-column="2"
+                                                    style="cursor: pointer;">
+                                                    <div>Year 2 <i class="bi bi-arrow-down-up"></i></div>
+                                                    <small class="text-muted">({{
+                                                        first_fund_with_data.year_breakdown['5year']['year_dates']['year2_start']
+                                                        }} to {{
+                                                        first_fund_with_data.year_breakdown['5year']['year_dates']['year2_end']
+                                                        }})</small>
+                                                </th>
+                                                <th class="text-end sortable-header" data-column="3"
+                                                    style="cursor: pointer;">
+                                                    <div>Year 3 <i class="bi bi-arrow-down-up"></i></div>
+                                                    <small class="text-muted">({{
+                                                        first_fund_with_data.year_breakdown['5year']['year_dates']['year3_start']
+                                                        }} to {{
+                                                        first_fund_with_data.year_breakdown['5year']['year_dates']['year3_end']
+                                                        }})</small>
+                                                </th>
+                                                <th class="text-end sortable-header" data-column="4"
+                                                    style="cursor: pointer;">
+                                                    <div>Year 4 <i class="bi bi-arrow-down-up"></i></div>
+                                                    <small class="text-muted">({{
+                                                        first_fund_with_data.year_breakdown['5year']['year_dates']['year4_start']
+                                                        }} to {{
+                                                        first_fund_with_data.year_breakdown['5year']['year_dates']['year4_end']
+                                                        }})</small>
+                                                </th>
+                                                <th class="text-end sortable-header" data-column="5"
+                                                    style="cursor: pointer;">
+                                                    <div>Year 5 <i class="bi bi-arrow-down-up"></i></div>
+                                                    <small class="text-muted">({{
+                                                        first_fund_with_data.year_breakdown['5year']['year_dates']['year5_start']
+                                                        }} to {{
+                                                        first_fund_with_data.year_breakdown['5year']['year_dates']['year5_end']
+                                                        }})</small>
+                                                </th>
+                                                {% else %}
+                                                <th class="text-end sortable-header" data-column="1"
+                                                    style="cursor: pointer;">
+                                                    Year 1 <i class="bi bi-arrow-down-up"></i></th>
+                                                <th class="text-end sortable-header" data-column="2"
+                                                    style="cursor: pointer;">
+                                                    Year 2 <i class="bi bi-arrow-down-up"></i></th>
+                                                <th class="text-end sortable-header" data-column="3"
+                                                    style="cursor: pointer;">
+                                                    Year 3 <i class="bi bi-arrow-down-up"></i></th>
+                                                <th class="text-end sortable-header" data-column="4"
+                                                    style="cursor: pointer;">
+                                                    Year 4 <i class="bi bi-arrow-down-up"></i></th>
+                                                <th class="text-end sortable-header" data-column="5"
+                                                    style="cursor: pointer;">
+                                                    Year 5 <i class="bi bi-arrow-down-up"></i></th>
+                                                {% endif %}
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for fund in funds %}
+                                            <tr>
+                                                <td class="sticky-start bg-white" data-value="{{ fund.name }}">
+                                                    <strong>{{
+                                                        fund.name }}</strong>
+                                                </td>
+                                                {% if fund.year_breakdown.get('5year') %}
+                                                <td class="text-end {% if fund.year_breakdown['5year']['year1'] >= 0 %}text-success fw-bold{% else %}text-danger fw-bold{% endif %}"
+                                                    data-value="{{ fund.year_breakdown['5year']['year1'] }}">
+                                                    {{ "%.2f"|format(fund.year_breakdown['5year']['year1']) }}%
+                                                </td>
+                                                <td class="text-end {% if fund.year_breakdown['5year']['year2'] >= 0 %}text-success fw-bold{% else %}text-danger fw-bold{% endif %}"
+                                                    data-value="{{ fund.year_breakdown['5year']['year2'] }}">
+                                                    {{ "%.2f"|format(fund.year_breakdown['5year']['year2']) }}%
+                                                </td>
+                                                <td class="text-end {% if fund.year_breakdown['5year']['year3'] >= 0 %}text-success fw-bold{% else %}text-danger fw-bold{% endif %}"
+                                                    data-value="{{ fund.year_breakdown['5year']['year3'] }}">
+                                                    {{ "%.2f"|format(fund.year_breakdown['5year']['year3']) }}%
+                                                </td>
+                                                <td class="text-end {% if fund.year_breakdown['5year']['year4'] >= 0 %}text-success fw-bold{% else %}text-danger fw-bold{% endif %}"
+                                                    data-value="{{ fund.year_breakdown['5year']['year4'] }}">
+                                                    {{ "%.2f"|format(fund.year_breakdown['5year']['year4']) }}%
+                                                </td>
+                                                <td class="text-end {% if fund.year_breakdown['5year']['year5'] >= 0 %}text-success fw-bold{% else %}text-danger fw-bold{% endif %}"
+                                                    data-value="{{ fund.year_breakdown['5year']['year5'] }}">
+                                                    {{ "%.2f"|format(fund.year_breakdown['5year']['year5']) }}%
+                                                </td>
+                                                {% else %}
+                                                <td class="text-end text-muted" colspan="5" data-value="0">Data not
+                                                    available
+                                                </td>
+                                                {% endif %}
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- Tab 3: Multi-Year Summary -->
+                            <div class="tab-pane fade" id="summaryPane">
+                                <!-- Year Selection Controls -->
+                                <div class="card mb-3 bg-light">
+                                    <div class="card-body py-2">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <strong class="me-3"><i class="bi bi-funnel me-2"></i>Include
+                                                    Years:</strong>
+                                                <div class="form-check form-check-inline">
+                                                    <input class="form-check-input year-filter" type="checkbox"
+                                                        id="includeYear1" value="1" checked>
+                                                    <label class="form-check-label" for="includeYear1">Year 1</label>
+                                                </div>
+                                                <div class="form-check form-check-inline">
+                                                    <input class="form-check-input year-filter" type="checkbox"
+                                                        id="includeYear2" value="2" checked>
+                                                    <label class="form-check-label" for="includeYear2">Year 2</label>
+                                                </div>
+                                                <div class="form-check form-check-inline">
+                                                    <input class="form-check-input year-filter" type="checkbox"
+                                                        id="includeYear3" value="3" checked>
+                                                    <label class="form-check-label" for="includeYear3">Year 3</label>
+                                                </div>
+                                                <div class="form-check form-check-inline">
+                                                    <input class="form-check-input year-filter" type="checkbox"
+                                                        id="includeYear4" value="4" checked>
+                                                    <label class="form-check-label" for="includeYear4">Year 4</label>
+                                                </div>
+                                                <div class="form-check form-check-inline">
+                                                    <input class="form-check-input year-filter" type="checkbox"
+                                                        id="includeYear5" value="5" checked>
+                                                    <label class="form-check-label" for="includeYear5">Year 5</label>
+                                                </div>
+                                            </div>
+                                            <button class="btn btn-sm btn-secondary" id="resetYearsBtn">
+                                                <i class="bi bi-arrow-counterclockwise me-1"></i>Reset All
+                                            </button>
+                                        </div>
+                                        <div class="mt-2">
+                                            <small class="text-muted">
+                                                <i class="bi bi-info-circle me-1"></i>Uncheck outlier years to
+                                                recalculate
+                                                returns without them
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-hover table-bordered mb-0" id="summaryTable">
+                                        <thead class="table-light sticky-top">
+                                            <tr>
+                                                <th class="sticky-start bg-white sortable-header" rowspan="2"
+                                                    data-column="0" style="cursor: pointer;">
+                                                    Fund Name <i class="bi bi-arrow-down-up"></i>
+                                                </th>
+                                                <th class="text-center bg-info text-white" colspan="2">2-Year Period
+                                                </th>
+                                                <th class="text-center bg-success text-white" colspan="2">3-Year Period
+                                                </th>
+                                                <th class="text-center bg-warning" colspan="2">5-Year Period</th>
+                                            </tr>
+                                            <tr>
+                                                <th class="text-end bg-light sortable-header" data-column="1"
+                                                    style="cursor: pointer;">
+                                                    Total Absolute <i class="bi bi-arrow-down-up"></i>
+                                                </th>
+                                                <th class="text-end bg-light sortable-header" data-column="2"
+                                                    style="cursor: pointer;">
+                                                    CAGR <i class="bi bi-arrow-down-up"></i>
+                                                </th>
+                                                <th class="text-end bg-light sortable-header" data-column="3"
+                                                    style="cursor: pointer;">
+                                                    Total Absolute <i class="bi bi-arrow-down-up"></i>
+                                                </th>
+                                                <th class="text-end bg-light sortable-header" data-column="4"
+                                                    style="cursor: pointer;">
+                                                    CAGR <i class="bi bi-arrow-down-up"></i>
+                                                </th>
+                                                <th class="text-end bg-light sortable-header" data-column="5"
+                                                    style="cursor: pointer;">
+                                                    Total Absolute <i class="bi bi-arrow-down-up"></i>
+                                                </th>
+                                                <th class="text-end bg-light sortable-header" data-column="6"
+                                                    style="cursor: pointer;">
+                                                    CAGR <i class="bi bi-arrow-down-up"></i>
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for fund in funds %}
+                                            <tr>
+                                                <td class="sticky-start bg-white" data-value="{{ fund.name }}">
+                                                    <strong>{{
+                                                        fund.name }}</strong>
+                                                </td>
+                                                {% if fund.year_breakdown.get('5year') %}
+                                                <td class="text-end total-abs-2y"
+                                                    data-value="{{ fund.year_breakdown['2year']['total_absolute'] if fund.year_breakdown.get('2year') else 0 }}"
+                                                    data-y1="{{ fund.year_breakdown['5year']['year4'] }}"
+                                                    data-y2="{{ fund.year_breakdown['5year']['year5'] }}">
+                                                    <span
+                                                        class="{% if fund.year_breakdown.get('2year') and fund.year_breakdown['2year']['total_absolute'] >= 0 %}text-success{% else %}text-danger{% endif %} fw-bold">
+                                                        {{ "%.2f"|format(fund.year_breakdown['2year']['total_absolute'])
+                                                        if
+                                                        fund.year_breakdown.get('2year') else '—' }}%
+                                                    </span>
+                                                </td>
+                                                <td class="text-end cagr-2y text-secondary"
+                                                    data-value="{{ fund.returns['2year'] if fund.year_breakdown.get('2year') else 0 }}">
+                                                    {{ "%.2f"|format(fund.returns['2year']) if
+                                                    fund.year_breakdown.get('2year')
+                                                    else '—' }}%
+                                                </td>
+
+                                                <td class="text-end total-abs-3y"
+                                                    data-value="{{ fund.year_breakdown['3year']['total_absolute'] if fund.year_breakdown.get('3year') else 0 }}"
+                                                    data-y1="{{ fund.year_breakdown['5year']['year3'] }}"
+                                                    data-y2="{{ fund.year_breakdown['5year']['year4'] }}"
+                                                    data-y3="{{ fund.year_breakdown['5year']['year5'] }}">
+                                                    <span
+                                                        class="{% if fund.year_breakdown.get('3year') and fund.year_breakdown['3year']['total_absolute'] >= 0 %}text-success{% else %}text-danger{% endif %} fw-bold">
+                                                        {{ "%.2f"|format(fund.year_breakdown['3year']['total_absolute'])
+                                                        if
+                                                        fund.year_breakdown.get('3year') else '—' }}%
+                                                    </span>
+                                                </td>
+                                                <td class="text-end cagr-3y text-secondary"
+                                                    data-value="{{ fund.returns['3year'] if fund.year_breakdown.get('3year') else 0 }}">
+                                                    {{ "%.2f"|format(fund.returns['3year']) if
+                                                    fund.year_breakdown.get('3year')
+                                                    else '—' }}%
+                                                </td>
+
+                                                <td class="text-end total-abs-5y"
+                                                    data-value="{{ fund.year_breakdown['5year']['total_absolute'] }}"
+                                                    data-y1="{{ fund.year_breakdown['5year']['year1'] }}"
+                                                    data-y2="{{ fund.year_breakdown['5year']['year2'] }}"
+                                                    data-y3="{{ fund.year_breakdown['5year']['year3'] }}"
+                                                    data-y4="{{ fund.year_breakdown['5year']['year4'] }}"
+                                                    data-y5="{{ fund.year_breakdown['5year']['year5'] }}">
+                                                    <span
+                                                        class="{% if fund.year_breakdown['5year']['total_absolute'] >= 0 %}text-success{% else %}text-danger{% endif %} fw-bold">
+                                                        {{ "%.2f"|format(fund.year_breakdown['5year']['total_absolute'])
+                                                        }}%
+                                                    </span>
+                                                </td>
+                                                <td class="text-end cagr-5y text-secondary"
+                                                    data-value="{{ fund.returns['5year'] }}">
+                                                    {{ "%.2f"|format(fund.returns['5year']) }}%
+                                                </td>
+                                                {% else %}
+                                                <td class="text-end text-muted" data-value="0" colspan="6">Data not
+                                                    available
+                                                </td>
+                                                {% endif %}
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+

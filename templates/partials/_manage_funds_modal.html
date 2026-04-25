@@ -1,0 +1,61 @@
+<!-- Manage Funds Modal -->
+<div class="modal fade" id="manageFundsModal" tabindex="-1" aria-labelledby="manageFundsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="manageFundsModalLabel"><i class="bi bi-list-check me-2"></i>Manage Funds</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <h6>Add New Fund</h6>
+                        <div class="input-group mb-3">
+                            <input type="text" id="fundSearchInput" class="form-control" placeholder="Search by fund name..." aria-label="Search">
+                            <button class="btn btn-primary" type="button" id="fundSearchBtn"><i class="bi bi-search"></i> Search</button>
+                        </div>
+                        <div id="fundSearchResults" class="list-group" style="max-height: 200px; overflow-y: auto;">
+                            <!-- Search results will appear here -->
+                        </div>
+                    </div>
+                </div>
+                
+                <hr>
+                
+                <div class="row">
+                    <div class="col-md-12">
+                        <h6>Currently Tracked Funds</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover align-middle">
+                                <thead>
+                                    <tr>
+                                        <th>Fund Name</th>
+                                        <th>Code</th>
+                                        <th class="text-end">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="trackedFundsList">
+                                    {% for fund in funds %}
+                                    <tr>
+                                        <td>{{ fund.name }}</td>
+                                        <td>{{ fund.code }}</td>
+                                        <td class="text-end">
+                                            <button class="btn btn-sm btn-outline-danger remove-fund-btn" data-code="{{ fund.code }}" data-name="{{ fund.name }}">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-success" id="refreshAfterManageBtn">Refresh Dashboard</button>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,25 @@
+        <div class="container-fluid px-3 mt-4">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h5 class="mb-0">Notes</h5>
+                </div>
+                <div class="card-body">
+                    <form id="noteForm">
+                        <div class="mb-3">
+                            <label for="noteDate" class="form-label">Date</label>
+                            <input type="date" class="form-control" id="noteDate" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="noteText" class="form-label">Note</label>
+                            <textarea class="form-control" id="noteText" rows="3" required></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Save Note</button>
+                    </form>
+                    <hr>
+                    <h6>Saved Notes</h6>
+                    <ul id="notesList" class="list-group">
+                        <!-- Notes will be added here dynamically -->
+                    </ul>
+                </div>
+            </div>
+        </div>

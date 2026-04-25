@@ -10,8 +10,12 @@ logger = logging.getLogger(__name__)
 # Cache for API responses (10 minutes TTL for better performance)
 api_cache = TTLCache(maxsize=100, ttl=600)
 
-# List of mutual funds to track
-funds = [
+import json
+import os
+
+FUNDS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'funds.json')
+
+DEFAULT_FUNDS = [
     {"name": "Motilal Oswal Midcap Fund", "code": "127042"},
     {"name": "Quant Small Cap Fund", "code": "120828"},
     {"name": "Bandhan Small Cap Fund", "code": "147946"},
@@ -23,6 +27,43 @@ funds = [
     {"name": "Tata Small Cap Fund", "code": "145206"},
     {"name": "HDFC Mid-Cap Opportunities Fund", "code": "118989"},
 ]
+
+def load_funds():
+    if not os.path.exists(FUNDS_FILE):
+        save_funds(DEFAULT_FUNDS)
+        return DEFAULT_FUNDS
+    try:
+        with open(FUNDS_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception as e:
+        logger.error(f"Error loading funds: {e}")
+        return DEFAULT_FUNDS
+
+def save_funds(funds_list):
+    try:
+        with open(FUNDS_FILE, 'w', encoding='utf-8') as f:
+            json.dump(funds_list, f, indent=4)
+        return True
+    except Exception as e:
+        logger.error(f"Error saving funds: {e}")
+        return False
+
+def add_fund(name, code):
+    funds_list = load_funds()
+    if not any(f['code'] == code for f in funds_list):
+        funds_list.append({"name": name, "code": code})
+        save_funds(funds_list)
+        return True
+    return False
+
+def remove_fund(code):
+    funds_list = load_funds()
+    new_funds = [f for f in funds_list if f['code'] != code]
+    if len(new_funds) != len(funds_list):
+        save_funds(new_funds)
+        return True
+    return False
+
 
 import bisect
 
@@ -202,13 +243,15 @@ async def fetch_all_funds_async():
     # Rate limit: 3 requests per second for better performance
     throttler = Throttler(rate_limit=3, period=1)
     
+    current_funds = load_funds()
+    
     async with aiohttp.ClientSession(
         timeout=aiohttp.ClientTimeout(total=30),
         connector=aiohttp.TCPConnector(limit=10, limit_per_host=5)
     ) as session:
         tasks = [
             fetch_fund_data_async(session, fund, throttler) 
-            for fund in funds
+            for fund in current_funds
         ]
         
         results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -217,7 +260,7 @@ async def fetch_all_funds_async():
         valid_results = []
         for i, result in enumerate(results):
             if isinstance(result, Exception):
-                logger.error(f"Exception for fund {funds[i]['name']}: {str(result)}")
+                logger.error(f"Exception for fund {current_funds[i]['name']}: {str(result)}")
             elif result is not None:
                 valid_results.append(result)
         
