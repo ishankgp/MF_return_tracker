@@ -6,3 +6,5 @@ venv/
 logs/
 __pycache__/
 *.pyc
+funds.json
+.cursor/

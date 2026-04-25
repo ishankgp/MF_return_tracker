@@ -16,15 +16,19 @@ from apscheduler.schedulers.background import BackgroundScheduler
 import pytz
 from authlib.integrations.flask_client import OAuth
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
+from config import get_config
 
 # Load environment variables
 load_dotenv()
 
 app = Flask(__name__)
+app.config.from_object(get_config())
+
 # Secure session key
-app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev-secret-key")
-# Session configuration
-app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
+secret_key = app.config.get("SECRET_KEY")
+if not secret_key and app.config.get("FLASK_ENV", "development") == "production":
+    raise ValueError("SECRET_KEY must be set in production")
+app.secret_key = secret_key or "dev-secret-key"
 
 CORS(app)
 
@@ -36,13 +40,13 @@ login_manager.login_view = 'login'
 oauth = OAuth(app)
 google = oauth.register(
     name='google',
-    client_id=os.getenv('GOOGLE_CLIENT_ID'),
-    client_secret=os.getenv('GOOGLE_CLIENT_SECRET'),
+    client_id=app.config.get('GOOGLE_CLIENT_ID'),
+    client_secret=app.config.get('GOOGLE_CLIENT_SECRET'),
     server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
     client_kwargs={'scope': 'openid email profile'},
 )
 
-ALLOWED_USERS = ["ishan.kgp@gmail.com"]
+ALLOWED_USERS = app.config.get('ALLOWED_USERS', ["ishan.kgp@gmail.com"])
 
 class User(UserMixin):
     def __init__(self, id, email, name):
@@ -143,7 +147,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Redis configuration for caching
-REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379')
+REDIS_URL = app.config.get('REDIS_URL', 'redis://localhost:6379')
 redis_client = None
 try:
     redis_client = redis.from_url(REDIS_URL)
@@ -152,8 +156,8 @@ try:
 except Exception as e:
     logger.warning(f"Redis not available: {e}")
 
-# In-memory cache as fallback (increased TTL for better performance)
-memory_cache = TTLCache(maxsize=200, ttl=600)  # 10 minutes
+# In-memory cache as fallback
+memory_cache = TTLCache(maxsize=app.config.get('MEMORY_CACHE_SIZE', 200), ttl=app.config.get('MEMORY_CACHE_TTL', 600))
 
 # Ensure the static directory exists
 static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static')
@@ -211,10 +215,7 @@ def get_cached_data():
         logger.info("Starting to fetch fund data")
         
         # Use async function for better performance
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        results = loop.run_until_complete(fetch_funds_data())
-        loop.close()
+        results = asyncio.run(fetch_funds_data())
         
         if not results:
             logger.error("No fund data could be fetched")
@@ -288,12 +289,13 @@ def index():
         try:
             dt = datetime.fromisoformat(timestamp)
             last_updated = dt.strftime("%Y-%m-%d %H:%M:%S")
-        except:
+        except Exception:
             last_updated = timestamp
         
         return render_template('index.html', 
                              funds=funds_data,
-                             last_updated=last_updated)
+                             last_updated=last_updated,
+                             fund_count=len(funds_data))
     except Exception as e:
         logger.error(f"Error rendering index: {str(e)}")
         logger.error(traceback.format_exc())
@@ -433,40 +435,7 @@ def scheduled_refresh():
                 logger.error("Scheduled refresh: No funds data fetched.")
                 return
 
-            # 2. Save to CSV (Persistence)
-            funds_data = process_fund_data(results)
-            
-            csv_rows = []
-            for fund in funds_data:
-                row = {
-                    'Fund Name': fund['name'],
-                    'AMFI Code': fund['code'],
-                    'Current NAV': fund['current_nav'],
-                    '1day': f"{fund['returns'].get('1day', 0):.2f}%",
-                    '1week': f"{fund['returns'].get('1week', 0):.2f}%",
-                    '1month': f"{fund['returns'].get('1month', 0):.2f}%",
-                    '3month': f"{fund['returns'].get('3month', 0):.2f}%",
-                    '6month': f"{fund['returns'].get('6month', 0):.2f}%",
-                    '1year': f"{fund['returns'].get('1year', 0):.2f}%",
-                    '2year': f"{fund['returns'].get('2year', 0):.2f}%",
-                    '3year': f"{fund['returns'].get('3year', 0):.2f}%",
-                    '5year': f"{fund['returns'].get('5year', 0):.2f}%"
-                }
-                csv_rows.append(row)
-            
-            df = pd.DataFrame(csv_rows)
-            columns = ['Fund Name', 'AMFI Code', 'Current NAV', '1day', '1week', '1month', 
-                      '3month', '6month', '1year', '2year', '3year', '5year']
-            
-            # Ensure columns exist
-            for col in columns:
-                if col not in df.columns:
-                    df[col] = "0.00%"
-            
-            df = df[columns]
-            df.to_csv(CSV_FILE, index=False)
-            logger.info(f"Scheduled refresh success. Saved CSV to {CSV_FILE}")
-                
+            logger.info("Scheduled refresh completed successfully.")
         except Exception as e:
             logger.error(f"Scheduled refresh failed: {e}")
             logger.error(traceback.format_exc())
