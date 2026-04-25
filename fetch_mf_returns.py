@@ -194,7 +194,7 @@ async def fetch_fund_data_async(session, fund, throttler):
                     
                     # Add total absolute return for the period
                     target_date = current_date - timedelta(days=365 * period_years)
-                    historical_nav, _ = find_closest_nav(nav_data, target_date)
+                    historical_nav, _ = find_closest_nav(parsed_navs, parsed_dates, target_date)
                     if historical_nav is not None and historical_nav != 0:
                         period_data["total_absolute"] = ((current_nav - historical_nav) / historical_nav) * 100
                     else:
