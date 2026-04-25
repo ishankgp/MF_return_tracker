@@ -24,32 +24,35 @@ funds = [
     {"name": "HDFC Mid-Cap Opportunities Fund", "code": "118989"},
 ]
 
-def find_closest_nav(nav_data, target_date):
-    """Find the NAV closest to the target date with improved performance"""
-    try:
-        target_date_str = target_date.strftime("%d-%m-%Y")
-        
-        # First try exact match
-        for nav in nav_data:
-            if nav['date'] == target_date_str:
-                return float(nav['nav']), nav['date']
-        
-        # If no exact match, find closest previous date
-        closest_nav = None
-        closest_date = None
-        
-        for nav in nav_data:
-            nav_date = datetime.strptime(nav['date'], "%d-%m-%Y")
-            if nav_date <= target_date:
-                if closest_date is None or nav_date > closest_date:
-                    closest_date = nav_date
-                    closest_nav = float(nav['nav'])
-                    closest_date_str = nav['date']
-        
-        return closest_nav, closest_date_str if closest_nav is not None else None
-    except Exception as e:
-        logger.error(f"Error finding closest NAV: {str(e)}")
+import bisect
+
+def parse_nav_data(nav_data):
+    """Parse and sort NAV data for fast O(log n) lookups"""
+    parsed = []
+    for item in nav_data:
+        try:
+            dt = datetime.strptime(item['date'], "%d-%m-%Y")
+            nav = float(item['nav'])
+            parsed.append((dt, nav, item['date']))
+        except (ValueError, KeyError):
+            continue
+    # Sort ascending by date
+    parsed.sort(key=lambda x: x[0])
+    dates = [x[0] for x in parsed]
+    return parsed, dates
+
+def find_closest_nav(parsed_navs, dates, target_date):
+    """Find the NAV closest to or equal to target_date using binary search"""
+    if not dates:
         return None, None
+    
+    idx = bisect.bisect_right(dates, target_date)
+    if idx == 0:
+        return None, None # target date is before our earliest record
+    
+    # idx-1 is the closest date <= target_date
+    _, nav, date_str = parsed_navs[idx-1]
+    return nav, date_str
 
 async def fetch_fund_data_async(session, fund, throttler):
     """Fetch fund data asynchronously with rate limiting and improved caching"""
@@ -87,6 +90,8 @@ async def fetch_fund_data_async(session, fund, throttler):
                     logger.error(f"Error parsing current NAV data for {fund['name']}: {str(e)}")
                     return None
                 
+                parsed_navs, parsed_dates = parse_nav_data(nav_data)
+                
                 # Calculate returns for different periods
                 returns = {}
                 dates = {}
@@ -104,7 +109,7 @@ async def fetch_fund_data_async(session, fund, throttler):
                 
                 for period, days in periods.items():
                     target_date = current_date - timedelta(days=days)
-                    historical_nav, historical_date = find_closest_nav(nav_data, target_date)
+                    historical_nav, historical_date = find_closest_nav(parsed_navs, parsed_dates, target_date)
 
                     if historical_nav is not None and historical_nav != 0:
                         # Annualize multi-year periods (>= 2 years). Keep others as trailing returns.
@@ -133,8 +138,8 @@ async def fetch_fund_data_async(session, fund, throttler):
                         end_date_target = current_date - timedelta(days=365 * i)
                         start_date_target = current_date - timedelta(days=365 * (i + 1))
                         
-                        end_nav, end_date_str = find_closest_nav(nav_data, end_date_target)
-                        start_nav, start_date_str = find_closest_nav(nav_data, start_date_target)
+                        end_nav, end_date_str = find_closest_nav(parsed_navs, parsed_dates, end_date_target)
+                        start_nav, start_date_str = find_closest_nav(parsed_navs, parsed_dates, start_date_target)
                         
                         if end_nav is not None and start_nav is not None and start_nav != 0:
                             ret = ((end_nav - start_nav) / start_nav) * 100
