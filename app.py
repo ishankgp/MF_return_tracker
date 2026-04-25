@@ -1,5 +1,5 @@
 from flask import Flask, render_template, send_from_directory, jsonify, request, redirect, url_for, flash, session
-import pandas as pd
+
 from fetch_mf_returns import fetch_funds_data, load_funds, add_fund, remove_fund
 import json
 from datetime import datetime, timedelta
