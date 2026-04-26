@@ -113,7 +113,9 @@ async def fetch_fund_data_async(session, fund, throttler):
     # Check cache first
     if cache_key in api_cache:
         logger.info(f"Cache hit for {fund['name']}")
-        return api_cache[cache_key]
+        cached_result = api_cache[cache_key].copy()
+        cached_result["is_portfolio"] = fund.get("is_portfolio", False)
+        return cached_result
     
     url = f"https://api.mfapi.in/mf/{fund['code']}"
     
@@ -234,14 +236,17 @@ async def fetch_fund_data_async(session, fund, throttler):
                     "returns": returns,
                     "consistency_score": score,  # New Field
                     "dates": dates,
-                    "year_breakdown": year_breakdown,
-                    "is_portfolio": fund.get("is_portfolio", False)
+                    "year_breakdown": year_breakdown
                 }
                 
-                # Cache the result
+                # Cache the result WITHOUT is_portfolio
                 api_cache[cache_key] = result
                 logger.info(f"Successfully fetched and cached data for {fund['name']}")
-                return result
+                
+                # Inject is_portfolio for the current request
+                final_result = result.copy()
+                final_result["is_portfolio"] = fund.get("is_portfolio", False)
+                return final_result
                 
     except asyncio.TimeoutError:
         logger.error(f"Timeout while fetching data for {fund['name']}")
