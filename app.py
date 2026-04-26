@@ -16,6 +16,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 import pytz
 from authlib.integrations.flask_client import OAuth
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
+from flask_session import Session
 from config import get_config
 
 # Load environment variables
@@ -155,6 +156,18 @@ try:
     logger.info("Redis connection established")
 except Exception as e:
     logger.warning(f"Redis not available: {e}")
+
+# Session configuration
+if redis_client:
+    app.config['SESSION_TYPE'] = 'redis'
+    app.config['SESSION_REDIS'] = redis_client
+    app.config['SESSION_PERMANENT'] = True
+    app.config['SESSION_USE_SIGNER'] = True
+    app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
+    Session(app)
+    logger.info("Redis-based sessions enabled")
+else:
+    logger.info("Using default cookie-based sessions (Redis not available)")
 
 # In-memory cache as fallback
 memory_cache = TTLCache(maxsize=app.config.get('MEMORY_CACHE_SIZE', 200), ttl=app.config.get('MEMORY_CACHE_TTL', 600))
