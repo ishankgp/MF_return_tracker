@@ -11,9 +11,9 @@ logger = logging.getLogger(__name__)
 api_cache = TTLCache(maxsize=100, ttl=600)
 
 import json
-import os
-
-FUNDS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'funds.json')
+DATA_DIR = os.getenv('DATA_DIR', os.path.dirname(os.path.abspath(__file__)))
+os.makedirs(DATA_DIR, exist_ok=True)
+FUNDS_FILE = os.path.join(DATA_DIR, 'funds.json')
 RESEARCH_FUNDS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'research_funds.json')
 
 DEFAULT_FUNDS = [
@@ -63,8 +63,10 @@ def add_fund(name, code):
     funds_list = load_funds()
     if not any(f['code'] == code for f in funds_list):
         funds_list.append({"name": name, "code": code})
-        save_funds(funds_list)
-        return True
+        if save_funds(funds_list):
+            return True
+        else:
+            return False
     return False
 
 def remove_fund(code):
