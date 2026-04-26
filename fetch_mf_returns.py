@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 api_cache = TTLCache(maxsize=100, ttl=600)
 
 import json
+import os
 DATA_DIR = os.getenv('DATA_DIR', os.path.dirname(os.path.abspath(__file__)))
 os.makedirs(DATA_DIR, exist_ok=True)
 FUNDS_FILE = os.path.join(DATA_DIR, 'funds.json')
