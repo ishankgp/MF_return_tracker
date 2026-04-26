@@ -7,7 +7,7 @@ load_dotenv()
 class Config:
     """Base configuration class"""
     # Flask settings
-    SECRET_KEY = os.getenv('SECRET_KEY', 'your-secret-key-change-in-production')
+    SECRET_KEY = os.getenv('SECRET_KEY') or os.getenv('FLASK_SECRET_KEY') or 'your-secret-key-change-in-production'
     FLASK_ENV = os.getenv('FLASK_ENV', 'development')
     DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
     
