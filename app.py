@@ -25,6 +25,9 @@ load_dotenv()
 app = Flask(__name__)
 app.config.from_object(get_config())
 
+# Track when the app was last deployed/started
+APP_START_TIME = datetime.now().strftime("%b %d, %H:%M:%S")
+
 # Secure session key
 secret_key = app.config.get("SECRET_KEY")
 if not secret_key and app.config.get("FLASK_ENV", "development") == "production":
@@ -309,7 +312,8 @@ def index():
         return render_template('index.html', 
                              funds=funds_data,
                              last_updated=last_updated,
-                             fund_count=len(funds_data))
+                             fund_count=len(funds_data),
+                             deploy_time=APP_START_TIME)
     except Exception as e:
         logger.error(f"Error rendering index: {str(e)}")
         logger.error(traceback.format_exc())
