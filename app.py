@@ -511,8 +511,10 @@ if not app.debug or os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
     scheduler = BackgroundScheduler()
     # Run every day at 11:00 AM IST
     scheduler.add_job(func=scheduled_refresh, trigger="cron", hour=11, minute=0, timezone=pytz.timezone('Asia/Kolkata'))
+    # Trigger an immediate background refresh on startup to warm the cache
+    scheduler.add_job(func=scheduled_refresh)
     scheduler.start()
-    logger.info("Scheduler started (11:00 AM daily)")
+    logger.info("Scheduler started (11:00 AM daily and immediate startup run)")
 
 
 @app.route('/api/notes', methods=['GET'])
