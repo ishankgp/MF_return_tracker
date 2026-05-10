@@ -173,19 +173,22 @@ else:
     logger.info("Using default cookie-based sessions (Redis not available)")
 
 # In-memory cache as fallback
-memory_cache = TTLCache(maxsize=app.config.get('MEMORY_CACHE_SIZE', 200), ttl=app.config.get('MEMORY_CACHE_TTL', 600))
+memory_cache = TTLCache(maxsize=app.config.get('MEMORY_CACHE_SIZE', 200), ttl=app.config.get('MEMORY_CACHE_TTL', 86400))
 
 # Ensure the static directory exists
 static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static')
 if not os.path.exists(static_dir):
     os.makedirs(static_dir)
 
-def cache_response(timeout=600):
+def cache_response(timeout=86400):
     """Decorator for caching API responses with improved performance"""
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
-            cache_key = f"{f.__name__}:{hash(str(args) + str(kwargs))}"
+            # Avoid hash() due to Python's hash randomization across processes
+            # For get_cached_data which takes no args, a simple name is fine
+            safe_args = f"{args}_{kwargs}" if args or kwargs else "empty_args"
+            cache_key = f"{f.__name__}:{safe_args}"
             
             # Try Redis first
             if redis_client:
@@ -224,7 +227,7 @@ def favicon():
     return send_from_directory(os.path.join(app.root_path, 'static'),
                              'favicon.ico', mimetype='image/vnd.microsoft.icon')
 
-@cache_response(timeout=600)
+@cache_response(timeout=86400)
 def get_cached_data():
     """Get cached fund data with improved error handling and performance"""
     try:
@@ -375,10 +378,12 @@ def api_funds():
 def refresh_data():
     """Force refresh of cached data with improved performance"""
     try:
-        # Clear caches
+        # Clear caches safely without flushing all user sessions
         memory_cache.clear()
         if redis_client:
-            redis_client.flushdb()
+            # Clear all keys associated with get_cached_data
+            for key in redis_client.scan_iter("get_cached_data:*"):
+                redis_client.delete(key)
         
         # Fetch fresh data
         results = get_cached_data()
@@ -427,7 +432,8 @@ def api_add_fund():
         # Clear cache so next fetch gets new fund
         memory_cache.clear()
         if redis_client:
-            redis_client.flushdb()
+            for key in redis_client.scan_iter("get_cached_data:*"):
+                redis_client.delete(key)
         return jsonify({"success": True, "message": "Fund added successfully"})
     return jsonify({"error": "Fund already exists or error adding"}), 400
 
@@ -438,7 +444,8 @@ def api_remove_fund(code):
         # Clear cache so next fetch reflects removal
         memory_cache.clear()
         if redis_client:
-            redis_client.flushdb()
+            for key in redis_client.scan_iter("get_cached_data:*"):
+                redis_client.delete(key)
         return jsonify({"success": True, "message": "Fund removed successfully"})
     return jsonify({"error": "Fund not found or error removing"}), 400
 
@@ -481,40 +488,50 @@ def save_notes(notes):
 # Scheduled Task for Data Refresh
 def scheduled_refresh():
     """Function to be called by APScheduler"""
-    logger.info("Starting scheduled data refresh...")
-    with app.app_context():
-        try:
-            # 1. Refresh Cache (Side effect of calling the logic, ignoring return)
-            # We call get_cached_data directly to strip the caching decorator if we want fresh?
-            # Actually, refresh_data() clears cache then calls get_cached_data.
-            # But refresh_data() returns a Response object.
-            # Let's reproduce the refresh_data logic here for clarity and safety.
-            
-            memory_cache.clear()
-            if redis_client:
-                redis_client.flushdb()
-                
-            results = get_cached_data() # fetches fresh because cache is clear
-            
-            if "funds" not in results:
-                logger.error("Scheduled refresh: No funds data fetched.")
-                return
+    if redis_client:
+        # Use Redis lock to ensure only one worker runs this task
+        lock = redis_client.lock("refresh_lock", timeout=1800) # 30 minutes lock
+        if not lock.acquire(blocking=False):
+            logger.info("Another worker is already running scheduled refresh. Skipping.")
+            return
 
-            logger.info("Scheduled refresh completed successfully.")
-        except Exception as e:
-            logger.error(f"Scheduled refresh failed: {e}")
-            logger.error(traceback.format_exc())
+    try:
+        logger.info("Starting scheduled data refresh...")
+        with app.app_context():
+            try:
+                # 1. Refresh Cache safely
+                memory_cache.clear()
+                if redis_client:
+                    for key in redis_client.scan_iter("get_cached_data:*"):
+                        redis_client.delete(key)
+                    
+                results = get_cached_data() # fetches fresh because cache is clear
+                
+                if "funds" not in results:
+                    logger.error("Scheduled refresh: No funds data fetched.")
+                    return
+
+                logger.info("Scheduled refresh completed successfully.")
+            except Exception as e:
+                logger.error(f"Scheduled refresh failed: {e}")
+                logger.error(traceback.format_exc())
+    finally:
+        if redis_client and 'lock' in locals():
+            try:
+                lock.release()
+            except Exception as e:
+                pass
 
 # Initialize Scheduler
 # Only start scheduler if not in debug mode (prevents double run with reloader)
 if not app.debug or os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
     scheduler = BackgroundScheduler()
-    # Run every day at 11:00 AM IST
-    scheduler.add_job(func=scheduled_refresh, trigger="cron", hour=11, minute=0, timezone=pytz.timezone('Asia/Kolkata'))
+    # Run every day at 12:30 AM IST
+    scheduler.add_job(func=scheduled_refresh, trigger="cron", hour=0, minute=30, timezone=pytz.timezone('Asia/Kolkata'))
     # Trigger an immediate background refresh on startup to warm the cache
     scheduler.add_job(func=scheduled_refresh)
     scheduler.start()
-    logger.info("Scheduler started (11:00 AM daily and immediate startup run)")
+    logger.info("Scheduler started (12:30 AM daily and immediate startup run)")
 
 
 @app.route('/api/notes', methods=['GET'])

@@ -7,8 +7,8 @@ from cachetools import TTLCache
 
 logger = logging.getLogger(__name__)
 
-# Cache for API responses (10 minutes TTL for better performance)
-api_cache = TTLCache(maxsize=100, ttl=600)
+# Cache for API responses (24 hours TTL for better performance)
+api_cache = TTLCache(maxsize=100, ttl=86400)
 
 import json
 import os
