@@ -1,6 +1,6 @@
 from flask import Flask, render_template, send_from_directory, jsonify, request, redirect, url_for, flash, session
 
-from fetch_mf_returns import fetch_funds_data, load_funds, add_fund, remove_fund
+from fetch_mf_returns import fetch_funds_data, load_funds, add_fund, remove_fund, add_research_fund, remove_research_fund, load_research_funds
 import json
 from datetime import datetime, timedelta
 from functools import wraps
@@ -448,6 +448,43 @@ def api_remove_fund(code):
                 redis_client.delete(key)
         return jsonify({"success": True, "message": "Fund removed successfully"})
     return jsonify({"error": "Fund not found or error removing"}), 400
+
+# Research Funds Management
+@app.route('/api/research-funds', methods=['POST'])
+@login_required
+def api_add_research_fund():
+    data = request.json
+    name = data.get('name')
+    code = data.get('code')
+    if not name or not code:
+        return jsonify({"error": "Name and code required"}), 400
+
+    if add_research_fund(name, str(code)):
+        # Clear cache so next fetch gets new fund
+        memory_cache.clear()
+        if redis_client:
+            for key in redis_client.scan_iter("get_cached_data:*"):
+                redis_client.delete(key)
+        return jsonify({"success": True, "message": "Fund added to research"})
+    return jsonify({"error": "Fund already in research or error adding"}), 400
+
+@app.route('/api/research-funds/<code>', methods=['DELETE'])
+@login_required
+def api_remove_research_fund(code):
+    if remove_research_fund(str(code)):
+        # Clear cache so next fetch reflects removal
+        memory_cache.clear()
+        if redis_client:
+            for key in redis_client.scan_iter("get_cached_data:*"):
+                redis_client.delete(key)
+        return jsonify({"success": True, "message": "Fund removed from research"})
+    return jsonify({"error": "Fund not found in research or error removing"}), 400
+
+@app.route('/api/research-funds', methods=['GET'])
+@login_required
+def api_get_research_funds():
+    """Get all research funds (raw list, not fetched data)"""
+    return jsonify(load_research_funds())
 
 # Notes Management
 NOTES_FILE = os.path.join(DATA_DIR, 'notes.json')

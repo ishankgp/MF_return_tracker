@@ -12,10 +12,13 @@ api_cache = TTLCache(maxsize=100, ttl=86400)
 
 import json
 import os
-DATA_DIR = os.getenv('DATA_DIR', os.path.dirname(os.path.abspath(__file__)))
+import shutil
+SOURCE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_DIR = os.getenv('DATA_DIR', SOURCE_DIR)
 os.makedirs(DATA_DIR, exist_ok=True)
 FUNDS_FILE = os.path.join(DATA_DIR, 'funds.json')
-RESEARCH_FUNDS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'research_funds.json')
+RESEARCH_FUNDS_FILE = os.path.join(DATA_DIR, 'research_funds.json')
+RESEARCH_FUNDS_SOURCE = os.path.join(SOURCE_DIR, 'research_funds.json')
 
 DEFAULT_FUNDS = [
     {"name": "Motilal Oswal Midcap Fund", "code": "127042"},
@@ -39,9 +42,14 @@ def load_funds():
             return json.load(f)
     except Exception as e:
         logger.error(f"Error loading funds: {e}")
-        return DEFAULT_FUNDS
+        # Return empty list if file is corrupted to avoid overwriting with defaults
+        # or better, raise an exception so the caller knows something is wrong.
+        return []
 
 def load_research_funds():
+    # If not in DATA_DIR yet, copy the bundled source file
+    if not os.path.exists(RESEARCH_FUNDS_FILE) and os.path.exists(RESEARCH_FUNDS_SOURCE):
+        shutil.copy2(RESEARCH_FUNDS_SOURCE, RESEARCH_FUNDS_FILE)
     if not os.path.exists(RESEARCH_FUNDS_FILE):
         return []
     try:
@@ -50,6 +58,38 @@ def load_research_funds():
     except Exception as e:
         logger.error(f"Error loading research funds: {e}")
         return []
+
+def save_research_funds(funds_list):
+    try:
+        with open(RESEARCH_FUNDS_FILE, 'w', encoding='utf-8') as f:
+            json.dump(funds_list, f, indent=4)
+        return True
+    except Exception as e:
+        logger.error(f"Error saving research funds: {e}")
+        return False
+
+def add_research_fund(name, code):
+    try:
+        funds_list = load_research_funds()
+        code_str = str(code)
+        if not any(str(f.get('code')) == code_str for f in funds_list):
+            funds_list.append({"name": name, "code": code_str})
+            if save_research_funds(funds_list):
+                return True
+            return False
+        return False  # Already exists
+    except Exception as e:
+        logger.error(f"Error in add_research_fund: {e}")
+        return False
+
+def remove_research_fund(code):
+    funds_list = load_research_funds()
+    code_str = str(code)
+    new_funds = [f for f in funds_list if str(f.get('code')) != code_str]
+    if len(new_funds) != len(funds_list):
+        save_research_funds(new_funds)
+        return True
+    return False
 
 def save_funds(funds_list):
     try:
@@ -61,14 +101,19 @@ def save_funds(funds_list):
         return False
 
 def add_fund(name, code):
-    funds_list = load_funds()
-    if not any(f['code'] == code for f in funds_list):
-        funds_list.append({"name": name, "code": code})
-        if save_funds(funds_list):
-            return True
-        else:
+    try:
+        funds_list = load_funds()
+        # Ensure code is treated as string for comparison
+        code_str = str(code)
+        if not any(str(f.get('code')) == code_str for f in funds_list):
+            funds_list.append({"name": name, "code": code_str})
+            if save_funds(funds_list):
+                return True
             return False
-    return False
+        return False # Already exists
+    except Exception as e:
+        logger.error(f"Error in add_fund: {e}")
+        return False
 
 def remove_fund(code):
     funds_list = load_funds()

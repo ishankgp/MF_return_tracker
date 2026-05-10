@@ -1,20 +1,22 @@
 <!-- Manage Funds Modal -->
 <div class="modal fade" id="manageFundsModal" tabindex="-1" aria-labelledby="manageFundsModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
                 <h5 class="modal-title" id="manageFundsModalLabel"><i class="bi bi-list-check me-2"></i>Manage Funds</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
+                <!-- Search Section -->
                 <div class="row mb-4">
                     <div class="col-md-12">
-                        <h6>Add New Fund</h6>
-                        <div class="input-group mb-3">
-                            <input type="text" id="fundSearchInput" class="form-control" placeholder="Search by fund name..." aria-label="Search">
+                        <h6><i class="bi bi-search me-1"></i>Search & Add Fund</h6>
+                        <div class="input-group mb-2">
+                            <input type="text" id="fundSearchInput" class="form-control" placeholder="Search by fund name (min 3 chars)..." aria-label="Search">
                             <button class="btn btn-primary" type="button" id="fundSearchBtn"><i class="bi bi-search"></i> Search</button>
                         </div>
-                        <div id="fundSearchResults" class="list-group" style="max-height: 200px; overflow-y: auto;">
+                        <small class="text-muted d-block mb-2">Search results will show two buttons — choose where to add the fund.</small>
+                        <div id="fundSearchResults" class="list-group" style="max-height: 250px; overflow-y: auto;">
                             <!-- Search results will appear here -->
                         </div>
                     </div>
@@ -22,12 +24,28 @@
                 
                 <hr>
                 
-                <div class="row">
-                    <div class="col-md-12">
-                        <h6>Currently Tracked Funds</h6>
-                        <div class="table-responsive">
+                <!-- Tabbed view of existing funds -->
+                <ul class="nav nav-tabs" id="manageFundsTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="manage-portfolio-tab" data-bs-toggle="tab" data-bs-target="#manage-portfolio-pane" type="button" role="tab">
+                            <i class="bi bi-briefcase me-1"></i>Core Portfolio
+                            <span class="badge bg-primary ms-1" id="portfolioFundCount">{{ funds|selectattr('is_portfolio')|list|length }}</span>
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="manage-research-tab" data-bs-toggle="tab" data-bs-target="#manage-research-pane" type="button" role="tab">
+                            <i class="bi bi-search me-1"></i>Research Universe
+                            <span class="badge bg-info ms-1" id="researchFundCount"></span>
+                        </button>
+                    </li>
+                </ul>
+                
+                <div class="tab-content pt-3" id="manageFundsTabContent">
+                    <!-- Portfolio Funds Tab -->
+                    <div class="tab-pane fade show active" id="manage-portfolio-pane" role="tabpanel">
+                        <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
                             <table class="table table-sm table-hover align-middle">
-                                <thead>
+                                <thead class="table-light sticky-top">
                                     <tr>
                                         <th>Fund Name</th>
                                         <th>Code</th>
@@ -35,7 +53,7 @@
                                     </tr>
                                 </thead>
                                 <tbody id="trackedFundsList">
-                                    {% for fund in funds %}
+                                    {% for fund in funds if fund.is_portfolio %}
                                     <tr>
                                         <td>{{ fund.name }}</td>
                                         <td>{{ fund.code }}</td>
@@ -50,11 +68,34 @@
                             </table>
                         </div>
                     </div>
+                    
+                    <!-- Research Funds Tab -->
+                    <div class="tab-pane fade" id="manage-research-pane" role="tabpanel">
+                        <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                            <table class="table table-sm table-hover align-middle">
+                                <thead class="table-light sticky-top">
+                                    <tr>
+                                        <th>Fund Name</th>
+                                        <th>Code</th>
+                                        <th class="text-end">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="researchFundsList">
+                                    <!-- Loaded dynamically via JS -->
+                                    <tr>
+                                        <td colspan="3" class="text-center text-muted py-3">
+                                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>Loading research funds...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-success" id="refreshAfterManageBtn">Refresh Dashboard</button>
+                <button type="button" class="btn btn-success" id="refreshAfterManageBtn"><i class="bi bi-arrow-clockwise me-1"></i>Refresh Dashboard</button>
             </div>
         </div>
     </div>

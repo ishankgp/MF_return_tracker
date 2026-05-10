@@ -417,6 +417,11 @@
             const fundSearchResults = document.getElementById('fundSearchResults');
             const refreshAfterManageBtn = document.getElementById('refreshAfterManageBtn');
 
+            // Allow Enter key to trigger search
+            fundSearchInput?.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') fundSearchBtn?.click();
+            });
+
             fundSearchBtn?.addEventListener('click', async () => {
                 const query = fundSearchInput.value.trim();
                 if (query.length < 3) {
@@ -436,21 +441,39 @@
                             fundSearchResults.innerHTML = '<div class="list-group-item text-muted">No funds found</div>';
                         } else {
                             results.forEach(fund => {
-                                const btn = document.createElement('button');
-                                btn.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center';
-                                btn.innerHTML = `
-                                    <div>
-                                        <h6 class="mb-0">${fund.schemeName}</h6>
+                                const div = document.createElement('div');
+                                div.className = 'list-group-item d-flex justify-content-between align-items-center';
+                                const safeName = fund.schemeName.replace(/"/g, '&quot;');
+                                div.innerHTML = `
+                                    <div class="flex-grow-1 me-2" style="min-width:0;">
+                                        <h6 class="mb-0 text-truncate">${fund.schemeName}</h6>
                                         <small class="text-muted">Code: ${fund.schemeCode}</small>
                                     </div>
-                                    <span class="btn btn-sm btn-success add-fund-btn" data-code="${fund.schemeCode}" data-name="${fund.schemeName}">Add</span>
+                                    <div class="btn-group btn-group-sm flex-shrink-0" role="group">
+                                        <button class="btn btn-success add-portfolio-btn" 
+                                                data-code="${fund.schemeCode}" 
+                                                data-name="${safeName}"
+                                                title="Add to Core Portfolio">
+                                            <i class="bi bi-briefcase me-1"></i>Portfolio
+                                        </button>
+                                        <button class="btn btn-info text-white add-research-btn" 
+                                                data-code="${fund.schemeCode}" 
+                                                data-name="${safeName}"
+                                                title="Add to Research Universe">
+                                            <i class="bi bi-search me-1"></i>Research
+                                        </button>
+                                    </div>
                                 `;
-                                fundSearchResults.appendChild(btn);
+                                fundSearchResults.appendChild(div);
                             });
                             
-                            // Add listeners to new add buttons
-                            document.querySelectorAll('.add-fund-btn').forEach(btn => {
-                                btn.addEventListener('click', handleAddFund);
+                            // Add listeners for portfolio add buttons
+                            document.querySelectorAll('.add-portfolio-btn').forEach(btn => {
+                                btn.addEventListener('click', (e) => handleAddFund(e, '/api/funds', 'Portfolio'));
+                            });
+                            // Add listeners for research add buttons
+                            document.querySelectorAll('.add-research-btn').forEach(btn => {
+                                btn.addEventListener('click', (e) => handleAddFund(e, '/api/research-funds', 'Research'));
                             });
                         }
                     }
@@ -463,45 +486,61 @@
                 }
             });
 
-            async function handleAddFund(e) {
+            async function handleAddFund(e, apiUrl, destination) {
                 const btn = e.currentTarget;
                 const code = btn.dataset.code;
                 const name = btn.dataset.name;
                 
+                // Disable both sibling buttons
+                const btnGroup = btn.closest('.btn-group');
+                const allBtns = btnGroup ? btnGroup.querySelectorAll('button') : [btn];
+                
                 btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
-                btn.disabled = true;
+                allBtns.forEach(b => b.disabled = true);
                 
                 try {
-                    const response = await fetch('/api/funds', {
+                    const response = await fetch(apiUrl, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ code, name })
                     });
                     
-                    const data = await response.json();
+                    let data;
+                    const contentType = response.headers.get("content-type");
+                    if (contentType && contentType.indexOf("application/json") !== -1) {
+                        data = await response.json();
+                    } else {
+                        data = { error: 'Server returned non-JSON response' };
+                    }
                     if (response.ok) {
                         btn.className = 'btn btn-sm btn-secondary';
-                        btn.textContent = 'Added';
-                        alert('Fund added successfully! Refresh dashboard to see changes.');
+                        btn.innerHTML = `<i class="bi bi-check-lg"></i> Added to ${destination}`;
+                        // Re-enable the other button
+                        allBtns.forEach(b => { if (b !== btn) b.disabled = false; });
                     } else {
-                        alert(data.error || 'Error adding fund');
-                        btn.innerHTML = 'Add';
-                        btn.disabled = false;
+                        alert(data.error || `Error adding fund to ${destination}`);
+                        btn.innerHTML = destination === 'Portfolio' 
+                            ? '<i class="bi bi-briefcase me-1"></i>Portfolio' 
+                            : '<i class="bi bi-search me-1"></i>Research';
+                        allBtns.forEach(b => b.disabled = false);
                     }
                 } catch (error) {
                     console.error('Error adding fund:', error);
-                    alert('Error adding fund');
-                    btn.innerHTML = 'Add';
-                    btn.disabled = false;
+                    alert(`Error adding fund to ${destination}`);
+                    btn.innerHTML = destination === 'Portfolio' 
+                        ? '<i class="bi bi-briefcase me-1"></i>Portfolio' 
+                        : '<i class="bi bi-search me-1"></i>Research';
+                    allBtns.forEach(b => b.disabled = false);
                 }
             }
 
+            // Remove portfolio fund handler
             document.querySelectorAll('.remove-fund-btn').forEach(btn => {
                 btn.addEventListener('click', async (e) => {
                     const code = e.currentTarget.dataset.code;
                     const name = e.currentTarget.dataset.name;
                     
-                    if (confirm(`Are you sure you want to remove ${name}?`)) {
+                    if (confirm(`Remove "${name}" from portfolio?`)) {
                         const targetBtn = e.currentTarget;
                         targetBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
                         targetBtn.disabled = true;
@@ -528,6 +567,87 @@
                     }
                 });
             });
+
+            // --- Research Funds Tab in Modal ---
+            async function loadResearchFundsList() {
+                const tbody = document.getElementById('researchFundsList');
+                if (!tbody) return;
+                
+                try {
+                    const response = await fetch('/api/research-funds');
+                    if (response.ok) {
+                        const funds = await response.json();
+                        const countBadge = document.getElementById('researchFundCount');
+                        if (countBadge) countBadge.textContent = funds.length;
+                        
+                        tbody.innerHTML = '';
+                        if (funds.length === 0) {
+                            tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted py-3">No research funds configured</td></tr>';
+                            return;
+                        }
+                        
+                        funds.forEach(fund => {
+                            const tr = document.createElement('tr');
+                            tr.innerHTML = `
+                                <td>${fund.name}</td>
+                                <td>${fund.code}</td>
+                                <td class="text-end">
+                                    <button class="btn btn-sm btn-outline-danger remove-research-fund-btn" data-code="${fund.code}" data-name="${fund.name.replace(/"/g, '&quot;')}">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </td>
+                            `;
+                            tbody.appendChild(tr);
+                        });
+                        
+                        // Attach remove handlers
+                        tbody.querySelectorAll('.remove-research-fund-btn').forEach(btn => {
+                            btn.addEventListener('click', handleRemoveResearchFund);
+                        });
+                    }
+                } catch (error) {
+                    console.error('Error loading research funds:', error);
+                    tbody.innerHTML = '<tr><td colspan="3" class="text-center text-danger">Error loading research funds</td></tr>';
+                }
+            }
+
+            async function handleRemoveResearchFund(e) {
+                const btn = e.currentTarget;
+                const code = btn.dataset.code;
+                const name = btn.dataset.name;
+                
+                if (confirm(`Remove "${name}" from research universe?`)) {
+                    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+                    btn.disabled = true;
+                    
+                    try {
+                        const response = await fetch(`/api/research-funds/${code}`, {
+                            method: 'DELETE'
+                        });
+                        
+                        if (response.ok) {
+                            btn.closest('tr').remove();
+                            // Update count badge
+                            const countBadge = document.getElementById('researchFundCount');
+                            if (countBadge) countBadge.textContent = parseInt(countBadge.textContent) - 1;
+                        } else {
+                            const data = await response.json();
+                            alert(data.error || 'Error removing fund');
+                            btn.innerHTML = '<i class="bi bi-trash"></i>';
+                            btn.disabled = false;
+                        }
+                    } catch (error) {
+                        console.error('Error removing research fund:', error);
+                        alert('Error removing fund');
+                        btn.innerHTML = '<i class="bi bi-trash"></i>';
+                        btn.disabled = false;
+                    }
+                }
+            }
+
+            // Load research funds when modal opens or research tab is clicked
+            const manageFundsModal = document.getElementById('manageFundsModal');
+            manageFundsModal?.addEventListener('shown.bs.modal', loadResearchFundsList);
 
             refreshAfterManageBtn?.addEventListener('click', () => {
                 window.location.reload();
