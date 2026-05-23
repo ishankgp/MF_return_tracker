@@ -16,6 +16,7 @@ from cachetools import TTLCache
 from dotenv import load_dotenv
 from flask_cors import CORS
 from flask_login import LoginManager, UserMixin, current_user, login_required, login_user, logout_user
+from filelock import FileLock, Timeout as FileLockTimeout
 try:
     from flask_session import Session
 except Exception:  # pragma: no cover - optional dependency fallback for local/tests
@@ -109,6 +110,7 @@ memory_cache = TTLCache(
 redis_cache_ttl = int(app.config.get("REDIS_TTL", app.config.get("MEMORY_CACHE_TTL", 600)))
 
 history_store = HistoryStore(os.path.join(DATA_DIR, "mf_history.db"))
+scheduler_leader_lock = None
 
 LAST_REFRESH_STATUS: Dict[str, Any] = {
     "timestamp": None,
@@ -613,12 +615,42 @@ def scheduled_refresh():
                 pass
 
 
+def _should_start_scheduler() -> bool:
+    """
+    Feature-flagged scheduler startup policy.
+    - legacy (default): preserve existing behavior (scheduler in each worker)
+    - single: only one process starts scheduler via file lock leader election
+    - off: disable scheduler
+    """
+    global scheduler_leader_lock
+
+    scheduler_mode = str(os.getenv("SCHEDULER_MODE", "legacy")).strip().lower()
+    if scheduler_mode in {"off", "disabled", "none", "0", "false"}:
+        logger.info("Scheduler disabled via SCHEDULER_MODE=%s", scheduler_mode)
+        return False
+
+    if scheduler_mode != "single":
+        return True
+
+    lock_file = os.path.join(DATA_DIR, "scheduler_leader.lock")
+    lock_timeout = int(os.getenv("SCHEDULER_LEADER_LOCK_TIMEOUT", "0"))
+    scheduler_leader_lock = FileLock(lock_file, timeout=lock_timeout)
+    try:
+        scheduler_leader_lock.acquire(timeout=lock_timeout)
+        logger.info("Scheduler leader lock acquired (%s)", lock_file)
+        return True
+    except FileLockTimeout:
+        logger.info("Scheduler leader lock not acquired; skipping scheduler in this worker")
+        return False
+
+
 if not app.config.get("TESTING") and (not app.debug or os.environ.get("WERKZEUG_RUN_MAIN") == "true"):
-    scheduler = BackgroundScheduler()
-    scheduler.add_job(func=scheduled_refresh, trigger="cron", hour=0, minute=30, timezone=pytz.timezone("Asia/Kolkata"))
-    scheduler.add_job(func=scheduled_refresh)
-    scheduler.start()
-    logger.info("Scheduler started (00:30 IST + startup warm refresh)")
+    if _should_start_scheduler():
+        scheduler = BackgroundScheduler()
+        scheduler.add_job(func=scheduled_refresh, trigger="cron", hour=0, minute=30, timezone=pytz.timezone("Asia/Kolkata"))
+        scheduler.add_job(func=scheduled_refresh)
+        scheduler.start()
+        logger.info("Scheduler started (00:30 IST + startup warm refresh)")
 
 
 @app.route("/health")

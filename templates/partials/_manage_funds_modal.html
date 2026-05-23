@@ -1,21 +1,30 @@
 <!-- Manage Funds Modal -->
 <div class="modal fade" id="manageFundsModal" tabindex="-1" aria-labelledby="manageFundsModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="manageFundsModalLabel"><i class="bi bi-list-check me-2"></i>Manage Funds</h5>
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content operator-modal">
+            <div class="modal-header">
+                <div>
+                    <p class="eyebrow mb-1">Fund Universe</p>
+                    <h5 class="modal-title" id="manageFundsModalLabel"><i class="bi bi-list-check me-2"></i>Manage Funds</h5>
+                </div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <!-- Search Section -->
                 <div class="row mb-4">
                     <div class="col-md-12">
-                        <h6><i class="bi bi-search me-1"></i>Search & Add Fund</h6>
-                        <div class="input-group mb-2">
+                        <div class="section-heading">
+                            <div>
+                                <h6><i class="bi bi-search me-1"></i>Search and add fund</h6>
+                                <small>Choose whether a result belongs in your portfolio or research universe.</small>
+                            </div>
+                        </div>
+                        <div class="input-group search-control mb-2">
                             <input type="text" id="fundSearchInput" class="form-control" placeholder="Search by fund name (min 3 chars)..." aria-label="Search">
                             <button class="btn btn-primary" type="button" id="fundSearchBtn"><i class="bi bi-search"></i> Search</button>
                         </div>
-                        <small class="text-muted d-block mb-2">Search results will show two buttons — choose where to add the fund.</small>
+                        <small class="text-muted d-block mb-2">Search results show two actions: add to Portfolio or Research.</small>
+                        <div id="fundActionStatus" class="action-status" aria-live="polite"></div>
                         <div id="fundSearchResults" class="list-group" style="max-height: 250px; overflow-y: auto;">
                             <!-- Search results will appear here -->
                         </div>
@@ -25,16 +34,16 @@
                 <hr>
                 
                 <!-- Tabbed view of existing funds -->
-                <ul class="nav nav-tabs" id="manageFundsTabs" role="tablist">
+                <ul class="nav nav-tabs manage-tabs" id="manageFundsTabs" role="tablist">
                     <li class="nav-item" role="presentation">
                         <button class="nav-link active" id="manage-portfolio-tab" data-bs-toggle="tab" data-bs-target="#manage-portfolio-pane" type="button" role="tab">
-                            <i class="bi bi-briefcase me-1"></i>Core Portfolio
+                            <i class="bi bi-briefcase me-1"></i>Portfolio
                             <span class="badge bg-primary ms-1" id="portfolioFundCount">{{ funds|selectattr('is_portfolio')|list|length }}</span>
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="manage-research-tab" data-bs-toggle="tab" data-bs-target="#manage-research-pane" type="button" role="tab">
-                            <i class="bi bi-search me-1"></i>Research Universe
+                            <i class="bi bi-search me-1"></i>Research
                             <span class="badge bg-info ms-1" id="researchFundCount"></span>
                         </button>
                     </li>
@@ -94,8 +103,8 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-success" id="refreshAfterManageBtn"><i class="bi bi-arrow-clockwise me-1"></i>Refresh Dashboard</button>
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="refreshAfterManageBtn"><i class="bi bi-arrow-clockwise me-1"></i>Refresh Dashboard</button>
             </div>
         </div>
     </div>

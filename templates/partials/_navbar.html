@@ -1,17 +1,30 @@
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary fixed-top py-1">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="#">Mutual Fund Returns Tracker</a>
-            <div class="d-flex align-items-center">
-                <span class="navbar-text me-3">
-                    Last Updated: {{ last_updated }}
-                </span>
-                <button class="btn btn-outline-light btn-sm me-2" data-bs-toggle="modal" data-bs-target="#manageFundsModal" title="Manage Funds">
-                    <i class="bi bi-list-check"></i> Manage Funds
-                </button>
-                <button class="btn btn-outline-light btn-sm refresh-btn" id="refreshBtn" title="Refresh Data">
-                    <i class="bi bi-arrow-clockwise"></i>
-                </button>
-            </div>
+<nav class="navbar app-navbar navbar-expand-lg fixed-top">
+    <div class="container-fluid">
+        <a class="navbar-brand app-brand" href="/" aria-label="Mutual Fund Returns Tracker home">
+            <span class="brand-mark"><i class="bi bi-activity"></i></span>
+            <span>
+                <span class="brand-title">Mutual Fund Tracker</span>
+                <span class="brand-subtitle">NAV and return intelligence</span>
+            </span>
+        </a>
+
+        <div class="navbar-actions">
+            <span class="status-pill last-updated-pill" title="Dashboard data refresh time">
+                <i class="bi bi-clock-history"></i>
+                <span class="status-label">Updated</span>
+                <strong>{{ last_updated }}</strong>
+            </span>
+            <button class="btn btn-ghost-light btn-sm" data-bs-toggle="modal" data-bs-target="#manageFundsModal"
+                title="Manage funds">
+                <i class="bi bi-list-check"></i>
+                <span>Manage Funds</span>
+            </button>
+            <button class="btn btn-ghost-light btn-sm refresh-btn" id="refreshBtn" title="Refresh data"
+                aria-label="Refresh data">
+                <i class="bi bi-arrow-clockwise"></i>
+                <span class="refresh-label">Refresh</span>
+            </button>
         </div>
-    </nav>
+    </div>
+</nav>
 

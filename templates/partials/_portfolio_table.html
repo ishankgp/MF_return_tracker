@@ -1,7 +1,17 @@
-﻿                <div class="card shadow-sm" id="tableViewContainer">
+                <div class="card data-card" id="tableViewContainer">
+                    <div class="card-header table-card-header">
+                        <div>
+                            <h2 class="card-title">Portfolio Returns</h2>
+                            <p class="card-subtitle">Current NAV and trailing returns for your tracked funds.</p>
+                        </div>
+                        <span class="status-pill anchor-pill">
+                            <i class="bi bi-calendar-check"></i>
+                            As of {{ comparison_anchor_date or 'N/A' }}
+                        </span>
+                    </div>
                     <div class="table-wrapper card-body p-0">
                         <div class="table-responsive">
-                            <table class="table table-hover table-striped align-middle" id="fundTable">
+                            <table class="table table-hover align-middle operator-table" id="fundTable">
                                 <thead class="table-light">
                                     <tr>
                                         <th class="fund-name-column">Fund Name</th>
@@ -46,7 +56,7 @@
                                     <!-- Main row - clickable -->
                                     <tr class="fund-row clickable-row" data-bs-toggle="collapse"
                                         data-bs-target="#collapse-{{ loop.index }}" aria-expanded="false"
-                                        style="cursor: pointer;">
+                                        tabindex="0">
                                         <td class="fund-name-cell">
                                             <i class="bi bi-chevron-right accordion-icon me-2"></i>
                                             <span class="fund-name">{{ fund.name }}</span>
@@ -54,51 +64,51 @@
                                         <td>
                                             <span class="amfi-code">{{ fund.code }}</span>
                                         </td>
-                                        <td>
-                                            <span class="current-nav-value">â‚¹{{ fund.current_nav }}</span>
+                                        <td class="nav-cell">
+                                            <span class="current-nav-value">&#8377;{{ fund.current_nav }}</span>
                                         </td>
-                                        <td class="{% if fund.returns['1day'] is none %}text-muted{% elif fund.returns['1day'] < 0 %}text-danger{% else %}text-success{% endif %}"
+                                        <td class="returns-cell {% if fund.returns['1day'] is none %}is-na{% elif fund.returns['1day'] < 0 %}is-negative{% else %}is-positive{% endif %}"
                                             data-value="{{ fund.returns['1day'] if fund.returns['1day'] is not none else '' }}">
                                             {% if fund.returns['1day'] is none %}N/A{% else %}{{
                                             "%.2f"|format(fund.returns['1day'])
                                             }}%{% endif %}
                                         </td>
-                                        <td class="{% if fund.returns['1week'] is none %}text-muted{% elif fund.returns['1week'] < 0 %}text-danger{% else %}text-success{% endif %}"
+                                        <td class="returns-cell {% if fund.returns['1week'] is none %}is-na{% elif fund.returns['1week'] < 0 %}is-negative{% else %}is-positive{% endif %}"
                                             data-value="{{ fund.returns['1week'] if fund.returns['1week'] is not none else '' }}">
                                             {% if fund.returns['1week'] is none %}N/A{% else %}{{
                                             "%.2f"|format(fund.returns['1week']) }}%{% endif %}
                                         </td>
-                                        <td class="{% if fund.returns['1month'] is none %}text-muted{% elif fund.returns['1month'] < 0 %}text-danger{% else %}text-success{% endif %}"
+                                        <td class="returns-cell {% if fund.returns['1month'] is none %}is-na{% elif fund.returns['1month'] < 0 %}is-negative{% else %}is-positive{% endif %}"
                                             data-value="{{ fund.returns['1month'] if fund.returns['1month'] is not none else '' }}">
                                             {% if fund.returns['1month'] is none %}N/A{% else %}{{
                                             "%.2f"|format(fund.returns['1month']) }}%{% endif %}
                                         </td>
-                                        <td class="{% if fund.returns['3month'] is none %}text-muted{% elif fund.returns['3month'] < 0 %}text-danger{% else %}text-success{% endif %} d-none d-md-table-cell"
+                                        <td class="returns-cell {% if fund.returns['3month'] is none %}is-na{% elif fund.returns['3month'] < 0 %}is-negative{% else %}is-positive{% endif %} d-none d-md-table-cell"
                                             data-value="{{ fund.returns['3month'] if fund.returns['3month'] is not none else '' }}">
                                             {% if fund.returns['3month'] is none %}N/A{% else %}{{
                                             "%.2f"|format(fund.returns['3month']) }}%{% endif %}
                                         </td>
-                                        <td class="{% if fund.returns['6month'] is none %}text-muted{% elif fund.returns['6month'] < 0 %}text-danger{% else %}text-success{% endif %} d-none d-md-table-cell"
+                                        <td class="returns-cell {% if fund.returns['6month'] is none %}is-na{% elif fund.returns['6month'] < 0 %}is-negative{% else %}is-positive{% endif %} d-none d-md-table-cell"
                                             data-value="{{ fund.returns['6month'] if fund.returns['6month'] is not none else '' }}">
                                             {% if fund.returns['6month'] is none %}N/A{% else %}{{
                                             "%.2f"|format(fund.returns['6month']) }}%{% endif %}
                                         </td>
-                                        <td class="{% if fund.returns['1year'] is none %}text-muted{% elif fund.returns['1year'] < 0 %}text-danger{% else %}text-success{% endif %}"
+                                        <td class="returns-cell {% if fund.returns['1year'] is none %}is-na{% elif fund.returns['1year'] < 0 %}is-negative{% else %}is-positive{% endif %}"
                                             data-value="{{ fund.returns['1year'] if fund.returns['1year'] is not none else '' }}">
                                             {% if fund.returns['1year'] is none %}N/A{% else %}{{
                                             "%.2f"|format(fund.returns['1year']) }}%{% endif %}
                                         </td>
-                                        <td class="{% if fund.returns['2year'] is none %}text-muted{% elif fund.returns['2year'] < 0 %}text-danger{% else %}text-success{% endif %}"
+                                        <td class="returns-cell {% if fund.returns['2year'] is none %}is-na{% elif fund.returns['2year'] < 0 %}is-negative{% else %}is-positive{% endif %}"
                                             data-value="{{ fund.returns['2year'] if fund.returns['2year'] is not none else '' }}">
                                             {% if fund.returns['2year'] is none %}N/A{% else %}{{
                                             "%.2f"|format(fund.returns['2year']) }}%{% endif %}
                                         </td>
-                                        <td class="{% if fund.returns['3year'] is none %}text-muted{% elif fund.returns['3year'] < 0 %}text-danger{% else %}text-success{% endif %}"
+                                        <td class="returns-cell {% if fund.returns['3year'] is none %}is-na{% elif fund.returns['3year'] < 0 %}is-negative{% else %}is-positive{% endif %}"
                                             data-value="{{ fund.returns['3year'] if fund.returns['3year'] is not none else '' }}">
                                             {% if fund.returns['3year'] is none %}N/A{% else %}{{
                                             "%.2f"|format(fund.returns['3year']) }}%{% endif %}
                                         </td>
-                                        <td class="{% if fund.returns['5year'] is none %}text-muted{% elif fund.returns['5year'] < 0 %}text-danger{% else %}text-success{% endif %}"
+                                        <td class="returns-cell {% if fund.returns['5year'] is none %}is-na{% elif fund.returns['5year'] < 0 %}is-negative{% else %}is-positive{% endif %}"
                                             data-value="{{ fund.returns['5year'] if fund.returns['5year'] is not none else '' }}">
                                             {% if fund.returns['5year'] is none %}N/A{% else %}{{
                                             "%.2f"|format(fund.returns['5year']) }}%{% endif %}
@@ -107,11 +117,12 @@
 
                                     <!-- Expanded accordion row -->
                                     <tr class="collapse accordion-collapse" id="collapse-{{ loop.index }}">
-                                        <td colspan="11" class="accordion-body-cell">
-                                            <div class="accordion-content p-4 bg-light">
-                                                <h6 class="mb-3 text-primary"><i
-                                                        class="bi bi-graph-up me-2"></i>Complete
-                                                    Returns Analysis</h6>
+                                        <td colspan="12" class="accordion-body-cell">
+                                            <div class="accordion-content">
+                                                <div class="accordion-heading">
+                                                    <h6><i class="bi bi-graph-up me-2"></i>Complete Returns Analysis</h6>
+                                                    <span class="status-pill data-quality-pill">{{ "%.0f"|format((fund.data_completeness or 0) * 100) }}% data coverage</span>
+                                                </div>
 
                                                 {% if fund.year_breakdown and (fund.year_breakdown.get('2year') or
                                                 fund.year_breakdown.get('3year') or fund.year_breakdown.get('5year')) %}
@@ -445,5 +456,3 @@
                         </div>
                     </div>
                 </div>
-
-

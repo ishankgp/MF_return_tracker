@@ -10,10 +10,10 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
 
-    <!-- Modern Font: Inter -->
+    <!-- Purposeful dashboard typography -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 
     <!-- Custom Styles -->
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
@@ -21,10 +21,27 @@
 
 <body>
     {% include "partials/_navbar.html" %}
-    <div class="container-fluid px-3" style="margin-top:4rem;">
+    <div class="dashboard-shell container-fluid">
+        <section class="dashboard-hero">
+            <div>
+                <p class="eyebrow mb-1">Operator Dashboard</p>
+                <h1>Mutual fund return tracking</h1>
+                <p class="hero-copy mb-0">Compare portfolio funds with consistent as-of dates, data-quality signals, and quick research ranking.</p>
+            </div>
+            <div class="hero-metrics">
+                <div class="metric-card">
+                    <span>Funds Loaded</span>
+                    <strong>{{ fund_count }}</strong>
+                </div>
+                <div class="metric-card">
+                    <span>Comparison Anchor</span>
+                    <strong>{{ comparison_anchor_date or 'N/A' }}</strong>
+                </div>
+            </div>
+        </section>
+
         <!-- Main Tab Navigation -->
-        <ul class="nav nav-pills nav-fill mb-4 p-1 bg-white rounded-pill shadow-sm" id="sectionTabs" role="tablist"
-            style="border: 1px solid var(--color-border);">
+        <ul class="nav nav-pills nav-fill section-tabs" id="sectionTabs" role="tablist">
             <li class="nav-item" role="presentation">
                 <button class="nav-link active rounded-pill" id="portfolio-tab" data-bs-toggle="pill"
                     data-bs-target="#portfolio-section" type="button" role="tab">
@@ -44,9 +61,9 @@
             <div class="tab-pane fade show active" id="portfolio-section" role="tabpanel">
 
                 <!-- View Toggle and Expand/Collapse Buttons -->
-                <div class="card shadow-sm mb-3">
-                    <div class="card-body py-2">
-                        <div class="d-flex justify-content-between align-items-center">
+                <div class="card toolbar-card mb-3">
+                    <div class="card-body">
+                        <div class="dashboard-toolbar">
                             <div class="btn-group" role="group">
                                 <input type="radio" class="btn-check" name="viewMode" id="tableView" autocomplete="off"
                                     checked>
@@ -59,7 +76,7 @@
                                     <i class="bi bi-grid-3x3-gap me-1"></i>Comparison Matrix
                                 </label>
                             </div>
-                            <div class="btn-group" role="group" id="expandCollapseButtons">
+                            <div class="btn-group toolbar-actions" role="group" id="expandCollapseButtons">
                                 <button class="btn btn-outline-secondary btn-sm" id="expandAllBtn">
                                     <i class="bi bi-chevron-double-down me-1"></i>Expand All
                                 </button>
@@ -92,6 +109,7 @@
                 </small>
             </div>
         </footer>
+    </div>
 
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
         <script src="{{ url_for('static', filename='app.js') }}"></script>

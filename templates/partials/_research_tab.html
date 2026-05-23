@@ -1,18 +1,19 @@
             <div class="tab-pane fade" id="research-section" role="tabpanel">
-                <div class="card shadow-sm">
-                    <div class="card-header bg-white border-bottom py-3">
-                        <div class="d-flex align-items-center justify-content-between">
-                            <div>
-                                <h5 class="mb-1 text-primary"><i class="bi bi-trophy me-2"></i>Top Funds by Consistency
-                                </h5>
-                                <small class="text-muted">Ranked by weighted consistency score (50% 3Y + 30% 2Y + 20%
-                                    1Y)</small>
-                            </div>
-                            <div>
-                                <div class="form-check form-switch mt-2 mt-md-0">
-                                    <input class="form-check-input" type="checkbox" id="portfolioFilterToggle">
-                                    <label class="form-check-label fw-bold text-dark" for="portfolioFilterToggle">Show My Portfolio Only</label>
-                                </div>
+                <div class="card data-card research-card">
+                    <div class="card-header table-card-header">
+                        <div>
+                            <p class="eyebrow mb-1">Research Universe</p>
+                            <h2 class="card-title"><i class="bi bi-trophy me-2"></i>Top Funds by Consistency</h2>
+                            <p class="card-subtitle">Backend-ranked score using available 1Y, 2Y, and 3Y return coverage.</p>
+                        </div>
+                        <div class="research-filter">
+                            <span class="status-pill score-method-pill">
+                                <i class="bi bi-info-circle"></i>
+                                Score v{{ funds[0].score_method_version if funds and funds[0].score_method_version else '1' }}
+                            </span>
+                            <div class="form-check form-switch mt-2 mt-md-0">
+                                <input class="form-check-input" type="checkbox" id="portfolioFilterToggle">
+                                <label class="form-check-label fw-semibold" for="portfolioFilterToggle">Portfolio only</label>
                             </div>
                         </div>
                     </div>
@@ -24,6 +25,7 @@
                                         <th class="text-center" style="width: 60px;">Rank</th>
                                         <th>Fund Name</th>
                                         <th class="text-center">Consistency Score</th>
+                                        <th class="text-center">Coverage</th>
                                         <th class="text-end">1 Year</th>
                                         <th class="text-end">2 Years</th>
                                         <th class="text-end">3 Years</th>
@@ -43,7 +45,7 @@
                                         </td>
                                         <td>
                                             <div class="fw-bold text-dark">{{ fund.name }}</div>
-                                            <small class="text-muted">{{ fund.code }}</small>
+                                            <small class="amfi-code">{{ fund.code }}</small>
                                         </td>
                                         <td class="text-center">
                                             <div class="d-flex flex-column align-items-center">
@@ -54,6 +56,11 @@
                                                         style="width: {{ fund.consistency_score if fund.consistency_score is not none else 0 }}%"></div>
                                                 </div>
                                             </div>
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="status-pill data-quality-pill">
+                                                {{ "%.0f"|format((fund.data_completeness or 0) * 100) }}%
+                                            </span>
                                         </td>
                                         <td
                                             class="text-end {% if fund.returns['1year'] is none %}text-muted{% elif fund.returns['1year'] >= 0 %}text-success{% else %}text-danger{% endif %}">
@@ -79,7 +86,6 @@
                     </div>
                 </div>
             </div>
-        </div>
         <script>
         document.addEventListener('DOMContentLoaded', function() {
             const toggle = document.getElementById('portfolioFilterToggle');

@@ -21,6 +21,71 @@
             let lastSortedColumn = null;
             let notes = [];
 
+            function parseSortableValue(cell) {
+                const raw = cell?.getAttribute('data-value') ?? cell?.textContent?.trim() ?? '';
+                if (raw === '' || raw === 'N/A' || raw === 'Data not available') {
+                    return { missing: true, value: 0 };
+                }
+                const numericValue = parseFloat(raw);
+                if (!Number.isNaN(numericValue)) {
+                    return { missing: false, value: numericValue };
+                }
+                return { missing: false, value: raw.toString().toLowerCase() };
+            }
+
+            function compareSortableValues(aCell, bCell, ascending) {
+                const a = parseSortableValue(aCell);
+                const b = parseSortableValue(bCell);
+
+                if (a.missing && b.missing) return 0;
+                if (a.missing) return 1;
+                if (b.missing) return -1;
+
+                if (typeof a.value === 'number' && typeof b.value === 'number') {
+                    return ascending ? b.value - a.value : a.value - b.value;
+                }
+
+                return ascending
+                    ? b.value.toString().localeCompare(a.value.toString())
+                    : a.value.toString().localeCompare(b.value.toString());
+            }
+
+            function showStatus(message, type = 'info') {
+                const status = document.getElementById('fundActionStatus');
+                if (status) {
+                    status.textContent = message;
+                    status.className = `action-status is-${type}`;
+                }
+            }
+
+            function showToast(message, type = 'info') {
+                let container = document.getElementById('toastContainer');
+                if (!container) {
+                    container = document.createElement('div');
+                    container.id = 'toastContainer';
+                    container.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+                    document.body.appendChild(container);
+                }
+
+                const toastEl = document.createElement('div');
+                toastEl.className = `toast align-items-center border-0 text-bg-${type === 'error' ? 'danger' : type === 'success' ? 'success' : 'primary'}`;
+                toastEl.setAttribute('role', 'status');
+                toastEl.setAttribute('aria-live', 'polite');
+                toastEl.setAttribute('aria-atomic', 'true');
+                toastEl.innerHTML = `
+                    <div class="d-flex">
+                        <div class="toast-body"></div>
+                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                    </div>
+                `;
+                toastEl.querySelector('.toast-body').textContent = message;
+                container.appendChild(toastEl);
+
+                const toast = new bootstrap.Toast(toastEl, { delay: 3500 });
+                toast.show();
+                toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
+            }
+
             // Optimized sort function (handles accordion rows)
             const sortTable = debounce(function (header) {
                 const column = header.cellIndex;
@@ -50,10 +115,10 @@
                     return {
                         mainRow: mainRow,
                         accordionRow: accordionRow,
-                        value: parseFloat(mainRow.cells[column].getAttribute('data-value')) || 0
+                        valueCell: mainRow.cells[column]
                     };
                 })
-                    .sort((a, b) => isAscending ? b.value - a.value : a.value - b.value);
+                    .sort((a, b) => compareSortableValues(a.valueCell, b.valueCell, isAscending));
 
                 // Use DocumentFragment for better performance
                 const fragment = document.createDocumentFragment();
@@ -75,19 +140,24 @@
 
             // Refresh functionality
             refreshBtn.addEventListener('click', async () => {
+                const originalHtml = refreshBtn.innerHTML;
                 try {
                     refreshBtn.classList.add('loading');
+                    refreshBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span><span class="refresh-label">Refreshing</span>';
                     const response = await fetch('/api/refresh', { method: 'POST' });
                     if (response.ok) {
                         // Reload the page to show fresh data
                         window.location.reload();
                     } else {
                         console.error('Failed to refresh data');
+                        showToast('Refresh failed. Please try again.', 'error');
                     }
                 } catch (error) {
                     console.error('Error refreshing data:', error);
+                    showToast('Refresh failed. Please check your connection.', 'error');
                 } finally {
                     refreshBtn.classList.remove('loading');
+                    refreshBtn.innerHTML = originalHtml;
                 }
             });
 
@@ -252,22 +322,7 @@
                             if (!aCell || !bCell) return 0;
 
                             // Use data-value attribute if available, otherwise use text content
-                            let aValue = aCell.getAttribute('data-value') || aCell.textContent.trim();
-                            let bValue = bCell.getAttribute('data-value') || bCell.textContent.trim();
-
-                            // Try to parse as number
-                            const aNum = parseFloat(aValue);
-                            const bNum = parseFloat(bValue);
-
-                            if (!isNaN(aNum) && !isNaN(bNum)) {
-                                // Numeric sorting
-                                return isAscending ? bNum - aNum : aNum - bNum;
-                            }
-
-                            // Text sorting
-                            return isAscending ?
-                                bValue.toString().localeCompare(aValue.toString()) :
-                                aValue.toString().localeCompare(bValue.toString());
+                            return compareSortableValues(aCell, bCell, isAscending);
                         });
 
                         // Re-append sorted rows
@@ -288,7 +343,7 @@
                 const selectedYears = Array.from(document.querySelectorAll('.year-filter:checked')).map(cb => parseInt(cb.value));
 
                 if (selectedYears.length === 0) {
-                    alert('Please select at least one year');
+                    showToast('Select at least one year to recalculate returns.', 'error');
                     return;
                 }
 
@@ -397,7 +452,7 @@
                 }
 
                 // Update data-value for sorting
-                cell.setAttribute('data-value', '0');
+                cell.setAttribute('data-value', '');
             }
 
             // Event listeners for year filters
@@ -425,12 +480,13 @@
             fundSearchBtn?.addEventListener('click', async () => {
                 const query = fundSearchInput.value.trim();
                 if (query.length < 3) {
-                    alert('Please enter at least 3 characters');
+                    showStatus('Enter at least 3 characters to search.', 'error');
                     return;
                 }
                 
                 fundSearchBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Searching...';
                 fundSearchBtn.disabled = true;
+                showStatus('Searching AMFI fund universe...', 'info');
                 
                 try {
                     const response = await fetch(`/api/funds/search?q=${encodeURIComponent(query)}`);
@@ -439,7 +495,9 @@
                         fundSearchResults.innerHTML = '';
                         if (results.length === 0) {
                             fundSearchResults.innerHTML = '<div class="list-group-item text-muted">No funds found</div>';
+                            showStatus('No funds found. Try a shorter scheme name.', 'error');
                         } else {
+                            showStatus(`${results.length} matching funds found. Choose a destination.`, 'success');
                             results.forEach(fund => {
                                 const div = document.createElement('div');
                                 div.className = 'list-group-item d-flex justify-content-between align-items-center';
@@ -480,6 +538,7 @@
                 } catch (error) {
                     console.error('Error searching:', error);
                     fundSearchResults.innerHTML = '<div class="list-group-item text-danger">Error searching funds</div>';
+                    showStatus('Search failed. Please try again.', 'error');
                 } finally {
                     fundSearchBtn.innerHTML = '<i class="bi bi-search"></i> Search';
                     fundSearchBtn.disabled = false;
@@ -515,10 +574,11 @@
                     if (response.ok) {
                         btn.className = 'btn btn-sm btn-secondary';
                         btn.innerHTML = `<i class="bi bi-check-lg"></i> Added to ${destination}`;
+                        showStatus(`Added ${name} to ${destination}. Refresh dashboard when done.`, 'success');
                         // Re-enable the other button
                         allBtns.forEach(b => { if (b !== btn) b.disabled = false; });
                     } else {
-                        alert(data.error || `Error adding fund to ${destination}`);
+                        showStatus(data.error || `Error adding fund to ${destination}`, 'error');
                         btn.innerHTML = destination === 'Portfolio' 
                             ? '<i class="bi bi-briefcase me-1"></i>Portfolio' 
                             : '<i class="bi bi-search me-1"></i>Research';
@@ -526,7 +586,7 @@
                     }
                 } catch (error) {
                     console.error('Error adding fund:', error);
-                    alert(`Error adding fund to ${destination}`);
+                    showStatus(`Error adding fund to ${destination}`, 'error');
                     btn.innerHTML = destination === 'Portfolio' 
                         ? '<i class="bi bi-briefcase me-1"></i>Portfolio' 
                         : '<i class="bi bi-search me-1"></i>Research';
@@ -554,13 +614,13 @@
                                 targetBtn.closest('tr').remove();
                             } else {
                                 const data = await response.json();
-                                alert(data.error || 'Error removing fund');
+                                showToast(data.error || 'Error removing fund', 'error');
                                 targetBtn.innerHTML = '<i class="bi bi-trash"></i>';
                                 targetBtn.disabled = false;
                             }
                         } catch (error) {
                             console.error('Error removing:', error);
-                            alert('Error removing fund');
+                            showToast('Error removing fund', 'error');
                             targetBtn.innerHTML = '<i class="bi bi-trash"></i>';
                             targetBtn.disabled = false;
                         }
@@ -607,7 +667,8 @@
                     }
                 } catch (error) {
                     console.error('Error loading research funds:', error);
-                    tbody.innerHTML = '<tr><td colspan="3" class="text-center text-danger">Error loading research funds</td></tr>';
+                            tbody.innerHTML = '<tr><td colspan="3" class="text-center text-danger">Error loading research funds</td></tr>';
+                            showToast('Error loading research funds', 'error');
                 }
             }
 
@@ -632,13 +693,13 @@
                             if (countBadge) countBadge.textContent = parseInt(countBadge.textContent) - 1;
                         } else {
                             const data = await response.json();
-                            alert(data.error || 'Error removing fund');
+                            showToast(data.error || 'Error removing fund', 'error');
                             btn.innerHTML = '<i class="bi bi-trash"></i>';
                             btn.disabled = false;
                         }
                     } catch (error) {
                         console.error('Error removing research fund:', error);
-                        alert('Error removing fund');
+                        showToast('Error removing fund', 'error');
                         btn.innerHTML = '<i class="bi bi-trash"></i>';
                         btn.disabled = false;
                     }

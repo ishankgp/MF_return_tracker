@@ -1,6 +1,10 @@
-﻿                <div class="card shadow-sm" id="comparisonViewContainer" style="display: none;">
-                    <div class="card-header bg-primary text-white">
-                        <h5 class="mb-0"><i class="bi bi-grid-3x3-gap me-2"></i>Comparison Matrix</h5>
+                <div class="card data-card" id="comparisonViewContainer" style="display: none;">
+                    <div class="card-header table-card-header">
+                        <div>
+                            <h2 class="card-title"><i class="bi bi-grid-3x3-gap me-2"></i>Comparison Matrix</h2>
+                            <p class="card-subtitle">Pivot returns by period and inspect outlier-year sensitivity.</p>
+                        </div>
+                        <span class="status-pill anchor-pill"><i class="bi bi-calendar-check"></i>{{ comparison_anchor_date or 'N/A' }}</span>
                     </div>
                     <div class="card-body p-0">
                         <!-- Tabs Navigation -->
@@ -117,8 +121,13 @@
                                                     style="cursor: pointer;">
                                                     Fund Name <i class="bi bi-arrow-down-up"></i>
                                                 </th>
-                                                {% set first_fund_with_data =
-                                                funds|selectattr('year_breakdown.5year.year_dates', 'defined')|first %}
+                                                {% set year_data = namespace(first_fund_with_data=None) %}
+                                                {% for candidate in funds if year_data.first_fund_with_data is none %}
+                                                    {% if candidate.year_breakdown and candidate.year_breakdown.get('5year') and candidate.year_breakdown['5year'].get('year_dates') %}
+                                                        {% set year_data.first_fund_with_data = candidate %}
+                                                    {% endif %}
+                                                {% endfor %}
+                                                {% set first_fund_with_data = year_data.first_fund_with_data %}
                                                 {% if first_fund_with_data %}
                                                 <th class="text-end sortable-header" data-column="1"
                                                     style="cursor: pointer;">
@@ -213,7 +222,7 @@
                                                     {{ "%.2f"|format(fund.year_breakdown['5year']['year5']) }}%
                                                 </td>
                                                 {% else %}
-                                                <td class="text-end text-muted" colspan="5" data-value="0">Data not
+                                                <td class="text-end text-muted" colspan="5" data-value="">Data not
                                                     available
                                                 </td>
                                                 {% endif %}
@@ -323,7 +332,7 @@
                                                 </td>
                                                 {% if fund.year_breakdown.get('5year') %}
                                                 <td class="text-end total-abs-2y"
-                                                    data-value="{{ fund.year_breakdown['2year']['total_absolute'] if fund.year_breakdown.get('2year') else 0 }}"
+                                                    data-value="{{ fund.year_breakdown['2year']['total_absolute'] if fund.year_breakdown.get('2year') else '' }}"
                                                     data-y1="{{ fund.year_breakdown['5year']['year4'] }}"
                                                     data-y2="{{ fund.year_breakdown['5year']['year5'] }}">
                                                     <span
@@ -334,12 +343,12 @@
                                                     </span>
                                                 </td>
                                                 <td class="text-end cagr-2y text-secondary"
-                                                    data-value="{{ fund.returns['2year'] if fund.year_breakdown.get('2year') else 0 }}">
+                                                    data-value="{{ fund.returns['2year'] if fund.year_breakdown.get('2year') else '' }}">
                                                     {% if fund.year_breakdown.get('2year') and fund.returns['2year'] is not none %}{{ "%.2f"|format(fund.returns['2year']) }}%{% else %}N/A{% endif %}
                                                 </td>
 
                                                 <td class="text-end total-abs-3y"
-                                                    data-value="{{ fund.year_breakdown['3year']['total_absolute'] if fund.year_breakdown.get('3year') else 0 }}"
+                                                    data-value="{{ fund.year_breakdown['3year']['total_absolute'] if fund.year_breakdown.get('3year') else '' }}"
                                                     data-y1="{{ fund.year_breakdown['5year']['year3'] }}"
                                                     data-y2="{{ fund.year_breakdown['5year']['year4'] }}"
                                                     data-y3="{{ fund.year_breakdown['5year']['year5'] }}">
@@ -351,7 +360,7 @@
                                                     </span>
                                                 </td>
                                                 <td class="text-end cagr-3y text-secondary"
-                                                    data-value="{{ fund.returns['3year'] if fund.year_breakdown.get('3year') else 0 }}">
+                                                    data-value="{{ fund.returns['3year'] if fund.year_breakdown.get('3year') else '' }}">
                                                     {% if fund.year_breakdown.get('3year') and fund.returns['3year'] is not none %}{{ "%.2f"|format(fund.returns['3year']) }}%{% else %}N/A{% endif %}
                                                 </td>
 
@@ -373,7 +382,7 @@
                                                     {% if fund.returns['5year'] is not none %}{{ "%.2f"|format(fund.returns['5year']) }}%{% else %}N/A{% endif %}
                                                 </td>
                                                 {% else %}
-                                                <td class="text-end text-muted" data-value="0" colspan="6">Data not
+                                                <td class="text-end text-muted" data-value="" colspan="6">Data not
                                                     available
                                                 </td>
                                                 {% endif %}
@@ -387,5 +396,3 @@
                     </div>
                 </div>
             </div>
-
-

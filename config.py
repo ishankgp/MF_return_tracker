@@ -44,6 +44,7 @@ class Config:
     CONNECTION_POOL_SIZE = int(os.getenv('CONNECTION_POOL_SIZE', 5))
     COMPARISON_COVERAGE_THRESHOLD = float(os.getenv('COMPARISON_COVERAGE_THRESHOLD', 0.8))
     STALE_THRESHOLD_DAYS = int(os.getenv('STALE_THRESHOLD_DAYS', 3))
+    SCHEDULER_MODE = os.getenv('SCHEDULER_MODE', 'legacy')
 
     # Authentication settings
     GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
