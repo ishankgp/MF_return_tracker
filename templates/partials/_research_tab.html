@@ -31,7 +31,7 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for fund in funds|sort(attribute='consistency_score', reverse=True) %}
+                                    {% for fund in funds %}
                                     <tr class="research-fund-row" data-is-portfolio="{{ 'true' if fund.is_portfolio else 'false' }}">
                                         <td class="text-center" data-original-rank="{{ loop.index }}">
                                             {% if loop.index <= 3 %} <span
