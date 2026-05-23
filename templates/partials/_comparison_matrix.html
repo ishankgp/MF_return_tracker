@@ -1,4 +1,4 @@
-                <div class="card shadow-sm" id="comparisonViewContainer" style="display: none;">
+﻿                <div class="card shadow-sm" id="comparisonViewContainer" style="display: none;">
                     <div class="card-header bg-primary text-white">
                         <h5 class="mb-0"><i class="bi bi-grid-3x3-gap me-2"></i>Comparison Matrix</h5>
                     </div>
@@ -40,32 +40,32 @@
                                                 <th class="text-end sortable-header" data-column="1"
                                                     style="cursor: pointer;">
                                                     <div>1 Day <i class="bi bi-arrow-down-up"></i></div>
-                                                    <small class="text-muted">({{ funds[0].dates['1day'] }})</small>
+                                                    <small class="text-muted">({{ comparison_header_dates.get('1day', 'N/A') }})</small>
                                                 </th>
                                                 <th class="text-end sortable-header" data-column="2"
                                                     style="cursor: pointer;">
                                                     <div>1 Week <i class="bi bi-arrow-down-up"></i></div>
-                                                    <small class="text-muted">({{ funds[0].dates['1week'] }})</small>
+                                                    <small class="text-muted">({{ comparison_header_dates.get('1week', 'N/A') }})</small>
                                                 </th>
                                                 <th class="text-end sortable-header" data-column="3"
                                                     style="cursor: pointer;">
                                                     <div>1 Month <i class="bi bi-arrow-down-up"></i></div>
-                                                    <small class="text-muted">({{ funds[0].dates['1month'] }})</small>
+                                                    <small class="text-muted">({{ comparison_header_dates.get('1month', 'N/A') }})</small>
                                                 </th>
                                                 <th class="text-end sortable-header" data-column="4"
                                                     style="cursor: pointer;">
                                                     <div>3 Months <i class="bi bi-arrow-down-up"></i></div>
-                                                    <small class="text-muted">({{ funds[0].dates['3month'] }})</small>
+                                                    <small class="text-muted">({{ comparison_header_dates.get('3month', 'N/A') }})</small>
                                                 </th>
                                                 <th class="text-end sortable-header" data-column="5"
                                                     style="cursor: pointer;">
                                                     <div>6 Months <i class="bi bi-arrow-down-up"></i></div>
-                                                    <small class="text-muted">({{ funds[0].dates['6month'] }})</small>
+                                                    <small class="text-muted">({{ comparison_header_dates.get('6month', 'N/A') }})</small>
                                                 </th>
                                                 <th class="text-end sortable-header" data-column="6"
                                                     style="cursor: pointer;">
                                                     <div>1 Year <i class="bi bi-arrow-down-up"></i></div>
-                                                    <small class="text-muted">({{ funds[0].dates['1year'] }})</small>
+                                                    <small class="text-muted">({{ comparison_header_dates.get('1year', 'N/A') }})</small>
                                                 </th>
                                             </tr>
                                         </thead>
@@ -76,29 +76,29 @@
                                                     <strong>{{
                                                         fund.name }}</strong>
                                                 </td>
-                                                <td class="text-end {% if fund.returns['1day'] >= 0 %}text-success{% else %}text-danger{% endif %}"
-                                                    data-value="{{ fund.returns['1day'] }}">
-                                                    {{ "%.2f"|format(fund.returns['1day']) }}%
+                                                <td class="text-end {% if fund.returns['1day'] is none %}text-muted{% elif fund.returns['1day'] >= 0 %}text-success{% else %}text-danger{% endif %}"
+                                                    data-value="{{ fund.returns['1day'] if fund.returns['1day'] is not none else '' }}">
+                                                    {% if fund.returns['1day'] is none %}N/A{% else %}{{ "%.2f"|format(fund.returns['1day']) }}%{% endif %}
                                                 </td>
-                                                <td class="text-end {% if fund.returns['1week'] >= 0 %}text-success{% else %}text-danger{% endif %}"
-                                                    data-value="{{ fund.returns['1week'] }}">
-                                                    {{ "%.2f"|format(fund.returns['1week']) }}%
+                                                <td class="text-end {% if fund.returns['1week'] is none %}text-muted{% elif fund.returns['1week'] >= 0 %}text-success{% else %}text-danger{% endif %}"
+                                                    data-value="{{ fund.returns['1week'] if fund.returns['1week'] is not none else '' }}">
+                                                    {% if fund.returns['1week'] is none %}N/A{% else %}{{ "%.2f"|format(fund.returns['1week']) }}%{% endif %}
                                                 </td>
-                                                <td class="text-end {% if fund.returns['1month'] >= 0 %}text-success{% else %}text-danger{% endif %}"
-                                                    data-value="{{ fund.returns['1month'] }}">
-                                                    {{ "%.2f"|format(fund.returns['1month']) }}%
+                                                <td class="text-end {% if fund.returns['1month'] is none %}text-muted{% elif fund.returns['1month'] >= 0 %}text-success{% else %}text-danger{% endif %}"
+                                                    data-value="{{ fund.returns['1month'] if fund.returns['1month'] is not none else '' }}">
+                                                    {% if fund.returns['1month'] is none %}N/A{% else %}{{ "%.2f"|format(fund.returns['1month']) }}%{% endif %}
                                                 </td>
-                                                <td class="text-end {% if fund.returns['3month'] >= 0 %}text-success{% else %}text-danger{% endif %}"
-                                                    data-value="{{ fund.returns['3month'] }}">
-                                                    {{ "%.2f"|format(fund.returns['3month']) }}%
+                                                <td class="text-end {% if fund.returns['3month'] is none %}text-muted{% elif fund.returns['3month'] >= 0 %}text-success{% else %}text-danger{% endif %}"
+                                                    data-value="{{ fund.returns['3month'] if fund.returns['3month'] is not none else '' }}">
+                                                    {% if fund.returns['3month'] is none %}N/A{% else %}{{ "%.2f"|format(fund.returns['3month']) }}%{% endif %}
                                                 </td>
-                                                <td class="text-end {% if fund.returns['6month'] >= 0 %}text-success{% else %}text-danger{% endif %}"
-                                                    data-value="{{ fund.returns['6month'] }}">
-                                                    {{ "%.2f"|format(fund.returns['6month']) }}%
+                                                <td class="text-end {% if fund.returns['6month'] is none %}text-muted{% elif fund.returns['6month'] >= 0 %}text-success{% else %}text-danger{% endif %}"
+                                                    data-value="{{ fund.returns['6month'] if fund.returns['6month'] is not none else '' }}">
+                                                    {% if fund.returns['6month'] is none %}N/A{% else %}{{ "%.2f"|format(fund.returns['6month']) }}%{% endif %}
                                                 </td>
-                                                <td class="text-end {% if fund.returns['1year'] >= 0 %}text-success{% else %}text-danger{% endif %}"
-                                                    data-value="{{ fund.returns['1year'] }}">
-                                                    {{ "%.2f"|format(fund.returns['1year']) }}%
+                                                <td class="text-end {% if fund.returns['1year'] is none %}text-muted{% elif fund.returns['1year'] >= 0 %}text-success{% else %}text-danger{% endif %}"
+                                                    data-value="{{ fund.returns['1year'] if fund.returns['1year'] is not none else '' }}">
+                                                    {% if fund.returns['1year'] is none %}N/A{% else %}{{ "%.2f"|format(fund.returns['1year']) }}%{% endif %}
                                                 </td>
                                             </tr>
                                             {% endfor %}
@@ -330,14 +330,12 @@
                                                         class="{% if fund.year_breakdown.get('2year') and fund.year_breakdown['2year']['total_absolute'] >= 0 %}text-success{% else %}text-danger{% endif %} fw-bold">
                                                         {{ "%.2f"|format(fund.year_breakdown['2year']['total_absolute'])
                                                         if
-                                                        fund.year_breakdown.get('2year') else '—' }}%
+                                                        fund.year_breakdown.get('2year') else 'N/A' }}%
                                                     </span>
                                                 </td>
                                                 <td class="text-end cagr-2y text-secondary"
                                                     data-value="{{ fund.returns['2year'] if fund.year_breakdown.get('2year') else 0 }}">
-                                                    {{ "%.2f"|format(fund.returns['2year']) if
-                                                    fund.year_breakdown.get('2year')
-                                                    else '—' }}%
+                                                    {% if fund.year_breakdown.get('2year') and fund.returns['2year'] is not none %}{{ "%.2f"|format(fund.returns['2year']) }}%{% else %}N/A{% endif %}
                                                 </td>
 
                                                 <td class="text-end total-abs-3y"
@@ -349,14 +347,12 @@
                                                         class="{% if fund.year_breakdown.get('3year') and fund.year_breakdown['3year']['total_absolute'] >= 0 %}text-success{% else %}text-danger{% endif %} fw-bold">
                                                         {{ "%.2f"|format(fund.year_breakdown['3year']['total_absolute'])
                                                         if
-                                                        fund.year_breakdown.get('3year') else '—' }}%
+                                                        fund.year_breakdown.get('3year') else 'N/A' }}%
                                                     </span>
                                                 </td>
                                                 <td class="text-end cagr-3y text-secondary"
                                                     data-value="{{ fund.returns['3year'] if fund.year_breakdown.get('3year') else 0 }}">
-                                                    {{ "%.2f"|format(fund.returns['3year']) if
-                                                    fund.year_breakdown.get('3year')
-                                                    else '—' }}%
+                                                    {% if fund.year_breakdown.get('3year') and fund.returns['3year'] is not none %}{{ "%.2f"|format(fund.returns['3year']) }}%{% else %}N/A{% endif %}
                                                 </td>
 
                                                 <td class="text-end total-abs-5y"
@@ -374,7 +370,7 @@
                                                 </td>
                                                 <td class="text-end cagr-5y text-secondary"
                                                     data-value="{{ fund.returns['5year'] }}">
-                                                    {{ "%.2f"|format(fund.returns['5year']) }}%
+                                                    {% if fund.returns['5year'] is not none %}{{ "%.2f"|format(fund.returns['5year']) }}%{% else %}N/A{% endif %}
                                                 </td>
                                                 {% else %}
                                                 <td class="text-end text-muted" data-value="0" colspan="6">Data not
@@ -391,4 +387,5 @@
                     </div>
                 </div>
             </div>
+
 

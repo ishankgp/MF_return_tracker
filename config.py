@@ -22,6 +22,7 @@ class Config:
     # Cache settings
     MEMORY_CACHE_SIZE = int(os.getenv('MEMORY_CACHE_SIZE', 200))
     MEMORY_CACHE_TTL = int(os.getenv('MEMORY_CACHE_TTL', 600))  # 10 minutes
+    API_CACHE_TTL = int(os.getenv('API_CACHE_TTL', MEMORY_CACHE_TTL))
     
     # API settings
     API_TIMEOUT = int(os.getenv('API_TIMEOUT', 15))
@@ -41,6 +42,8 @@ class Config:
     # Performance settings
     MAX_CONCURRENT_REQUESTS = int(os.getenv('MAX_CONCURRENT_REQUESTS', 10))
     CONNECTION_POOL_SIZE = int(os.getenv('CONNECTION_POOL_SIZE', 5))
+    COMPARISON_COVERAGE_THRESHOLD = float(os.getenv('COMPARISON_COVERAGE_THRESHOLD', 0.8))
+    STALE_THRESHOLD_DAYS = int(os.getenv('STALE_THRESHOLD_DAYS', 3))
 
     # Authentication settings
     GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')

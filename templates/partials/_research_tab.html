@@ -48,28 +48,28 @@
                                         <td class="text-center">
                                             <div class="d-flex flex-column align-items-center">
                                                 <span class="h5 mb-0 text-primary fw-bold">{{
-                                                    "%.1f"|format(fund.consistency_score) }}</span>
+                                                    "%.1f"|format(fund.consistency_score) if fund.consistency_score is not none else 'N/A' }}</span>
                                                 <div class="progress w-75 mt-1" style="height: 4px;">
                                                     <div class="progress-bar" role="progressbar"
-                                                        style="width: {{ fund.consistency_score }}%"></div>
+                                                        style="width: {{ fund.consistency_score if fund.consistency_score is not none else 0 }}%"></div>
                                                 </div>
                                             </div>
                                         </td>
                                         <td
-                                            class="text-end {% if fund.returns['1year'] >= 0 %}text-success{% else %}text-danger{% endif %}">
-                                            {{ "%.2f"|format(fund.returns['1year']) }}%
+                                            class="text-end {% if fund.returns['1year'] is none %}text-muted{% elif fund.returns['1year'] >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                            {% if fund.returns['1year'] is none %}N/A{% else %}{{ "%.2f"|format(fund.returns['1year']) }}%{% endif %}
                                         </td>
                                         <td
-                                            class="text-end {% if fund.returns['2year'] >= 0 %}text-success{% else %}text-danger{% endif %}">
-                                            {{ "%.2f"|format(fund.returns['2year']) }}%
+                                            class="text-end {% if fund.returns['2year'] is none %}text-muted{% elif fund.returns['2year'] >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                            {% if fund.returns['2year'] is none %}N/A{% else %}{{ "%.2f"|format(fund.returns['2year']) }}%{% endif %}
                                         </td>
                                         <td
-                                            class="text-end {% if fund.returns['3year'] >= 0 %}text-success{% else %}text-danger{% endif %}">
-                                            {{ "%.2f"|format(fund.returns['3year']) }}%
+                                            class="text-end {% if fund.returns['3year'] is none %}text-muted{% elif fund.returns['3year'] >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                            {% if fund.returns['3year'] is none %}N/A{% else %}{{ "%.2f"|format(fund.returns['3year']) }}%{% endif %}
                                         </td>
                                         <td
-                                            class="text-end {% if fund.returns['5year'] >= 0 %}text-success{% else %}text-danger{% endif %}">
-                                            {{ "%.2f"|format(fund.returns['5year']) }}%
+                                            class="text-end {% if fund.returns['5year'] is none %}text-muted{% elif fund.returns['5year'] >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                            {% if fund.returns['5year'] is none %}N/A{% else %}{{ "%.2f"|format(fund.returns['5year']) }}%{% endif %}
                                         </td>
                                     </tr>
                                     {% endfor %}

@@ -1,34 +1,45 @@
-from flask import Flask, render_template, send_from_directory, jsonify, request, redirect, url_for, flash, session
-
-from fetch_mf_returns import fetch_funds_data, load_funds, add_fund, remove_fund, add_research_fund, remove_research_fund, load_research_funds
-import json
+﻿from flask import Flask, render_template, send_from_directory, jsonify, request, redirect, url_for, flash, session
 from datetime import datetime, timedelta
-from functools import wraps
-import logging
-import traceback
-import os
+from typing import Any, Dict, Optional
 import asyncio
-from flask_cors import CORS
-from cachetools import TTLCache
-import redis
-from dotenv import load_dotenv
-from apscheduler.schedulers.background import BackgroundScheduler
-import pytz
-from authlib.integrations.flask_client import OAuth
-from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
-from flask_session import Session
-from config import get_config
+import json
+import logging
+import os
+import traceback
 
-# Load environment variables
+import pytz
+import redis
+import requests
+from apscheduler.schedulers.background import BackgroundScheduler
+from authlib.integrations.flask_client import OAuth
+from cachetools import TTLCache
+from dotenv import load_dotenv
+from flask_cors import CORS
+from flask_login import LoginManager, UserMixin, current_user, login_required, login_user, logout_user
+try:
+    from flask_session import Session
+except Exception:  # pragma: no cover - optional dependency fallback for local/tests
+    Session = None
+
+from config import get_config
+from fetch_mf_returns import (
+    add_fund,
+    add_research_fund,
+    clear_data_caches,
+    fetch_funds_data,
+    load_research_funds,
+    remove_fund,
+    remove_research_fund,
+)
+from mf_tracker.services.history_store import HistoryStore
+
+
 load_dotenv()
 
 app = Flask(__name__)
 app.config.from_object(get_config())
-
-# Track when the app was last deployed/started
 APP_START_TIME = datetime.now().strftime("%b %d, %H:%M:%S")
 
-# Secure session key
 secret_key = app.config.get("SECRET_KEY")
 if not secret_key and app.config.get("FLASK_ENV", "development") == "production":
     raise ValueError("SECRET_KEY must be set in production")
@@ -36,378 +47,408 @@ app.secret_key = secret_key or "dev-secret-key"
 
 CORS(app)
 
-# --- Authentication Configuration ---
 login_manager = LoginManager()
 login_manager.init_app(app)
-login_manager.login_view = 'login'
+login_manager.login_view = "login"
 
 oauth = OAuth(app)
 google = oauth.register(
-    name='google',
-    client_id=app.config.get('GOOGLE_CLIENT_ID'),
-    client_secret=app.config.get('GOOGLE_CLIENT_SECRET'),
-    server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
-    client_kwargs={'scope': 'openid email profile'},
+    name="google",
+    client_id=app.config.get("GOOGLE_CLIENT_ID"),
+    client_secret=app.config.get("GOOGLE_CLIENT_SECRET"),
+    server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
+    client_kwargs={"scope": "openid email profile"},
 )
 
-ALLOWED_USERS = app.config.get('ALLOWED_USERS', ["ishan.kgp@gmail.com"])
+allowed_users_raw = app.config.get("ALLOWED_USERS", ["ishan.kgp@gmail.com"])
+if isinstance(allowed_users_raw, str):
+    allowed_users_raw = [allowed_users_raw]
+ALLOWED_USERS = {value.strip().lower() for value in allowed_users_raw if value and value.strip()}
 
-class User(UserMixin):
-    def __init__(self, id, email, name):
-        self.id = id
-        self.email = email
-        self.name = name
-
-@login_manager.user_loader
-def load_user(user_id):
-    # In a real app, you'd load from DB. Here we trust the session info if it exists.
-    # Since we don't have a DB, we'll reconstruct User from session if possible, 
-    # but flask-login calls this with the ID. 
-    # For a simple single-user app without DB, we can be a bit hacky or use session directly.
-    # BETTER APPROACH: secure session stores the user info.
-    if 'user_email' in session:
-         return User(session['user_id'], session['user_email'], session.get('user_name', 'User'))
-    return None
-
-@app.route('/login')
-def login():
-    if current_user.is_authenticated:
-        return redirect(url_for('index'))
-    return render_template('login.html')
-
-@app.route('/auth/login')
-def auth_login():
-    redirect_uri = url_for('auth_callback', _external=True)
-    
-    # Force HTTPS in production (Railway/Vercel)
-    if not 'localhost' in redirect_uri and not '127.0.0.1' in redirect_uri:
-        redirect_uri = redirect_uri.replace('http://', 'https://')
-        
-    return google.authorize_redirect(redirect_uri)
-
-@app.route('/auth/callback')
-def auth_callback():
-    try:
-        token = google.authorize_access_token()
-        # Authlib automatically parses the id_token and adds 'userinfo' to the token dict
-        # when 'openid' scope is present.
-        user_info = token.get('userinfo')
-        if not user_info:
-             # Fallback if for some reason it's not in the token (rare with OIDC)
-             # Try to manually fetch using the discovered endpoint
-             resp = google.get('https://openidconnect.googleapis.com/v1/userinfo')
-             user_info = resp.json()
-             
-        email = user_info['email']
-        
-        if email not in ALLOWED_USERS:
-            flash("Access denied: You are not authorized to view this application.", "error")
-            return redirect(url_for('login'))
-        
-        # Create user object
-        # Google OIDC uses 'sub' as the unique identifier, not 'id'
-        user = User(user_info.get('sub'), email, user_info.get('name', 'User'))
-        
-        # Login user
-        login_user(user)
-        session['user_id'] = user.id
-        session['user_email'] = user.email
-        session['user_name'] = user.name
-        session.permanent = True
-        
-        return redirect(url_for('index'))
-    except Exception as e:
-        logger.error(f"Auth failed: {e}")
-        flash(f"Authentication failed: {str(e)}", "error")
-        return redirect(url_for('login'))
-
-@app.route('/logout')
-@login_required
-def logout():
-    logout_user()
-    session.clear()
-    return redirect(url_for('login'))
-
-# ------------------------------------
-
-IS_VERCEL = os.environ.get('VERCEL') == '1'
-
-# Ensure the logs directory exists and configure logging early with absolute paths
+IS_VERCEL = os.environ.get("VERCEL") == "1"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-# Data Directory for Persistence (Volumes)
-DATA_DIR = os.getenv('DATA_DIR', BASE_DIR)
-logs_dir = os.path.join(DATA_DIR, 'logs')
+DATA_DIR = os.getenv("DATA_DIR", BASE_DIR)
+logs_dir = os.path.join(DATA_DIR, "logs")
+os.makedirs(logs_dir, exist_ok=True)
 
 log_handlers = [logging.StreamHandler()]
 if not IS_VERCEL:
-    os.makedirs(logs_dir, exist_ok=True)
-    log_handlers.append(logging.FileHandler(os.path.join(logs_dir, 'app.log')))
+    log_handlers.append(logging.FileHandler(os.path.join(logs_dir, "app.log"), encoding="utf-8"))
 
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=log_handlers
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=log_handlers,
 )
 logger = logging.getLogger(__name__)
 
-# Redis configuration for caching
-REDIS_URL = app.config.get('REDIS_URL', 'redis://localhost:6379')
+REDIS_URL = app.config.get("REDIS_URL", "redis://localhost:6379")
 redis_client = None
 try:
     redis_client = redis.from_url(REDIS_URL)
-    redis_client.ping()  # Test connection
+    redis_client.ping()
     logger.info("Redis connection established")
-except Exception as e:
-    logger.warning(f"Redis not available: {e}")
+except Exception as exc:
+    logger.warning("Redis not available: %s", exc)
 
-# Session configuration
-if redis_client:
-    app.config['SESSION_TYPE'] = 'redis'
-    app.config['SESSION_REDIS'] = redis_client
-    app.config['SESSION_PERMANENT'] = True
-    app.config['SESSION_USE_SIGNER'] = True
-    app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
+if redis_client and Session is not None:
+    app.config["SESSION_TYPE"] = "redis"
+    app.config["SESSION_REDIS"] = redis_client
+    app.config["SESSION_PERMANENT"] = True
+    app.config["SESSION_USE_SIGNER"] = True
+    app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=7)
     Session(app)
     logger.info("Redis-based sessions enabled")
 else:
-    logger.info("Using default cookie-based sessions (Redis not available)")
+    logger.info("Using default cookie-based sessions")
 
-# In-memory cache as fallback
-memory_cache = TTLCache(maxsize=app.config.get('MEMORY_CACHE_SIZE', 200), ttl=app.config.get('MEMORY_CACHE_TTL', 86400))
+memory_cache = TTLCache(
+    maxsize=app.config.get("MEMORY_CACHE_SIZE", 200),
+    ttl=app.config.get("MEMORY_CACHE_TTL", 600),
+)
+redis_cache_ttl = int(app.config.get("REDIS_TTL", app.config.get("MEMORY_CACHE_TTL", 600)))
 
-# Ensure the static directory exists
-static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static')
-if not os.path.exists(static_dir):
-    os.makedirs(static_dir)
+history_store = HistoryStore(os.path.join(DATA_DIR, "mf_history.db"))
 
-def cache_response(timeout=86400):
-    """Decorator for caching API responses with improved performance"""
-    def decorator(f):
-        @wraps(f)
-        def decorated_function(*args, **kwargs):
-            # Avoid hash() due to Python's hash randomization across processes
-            # For get_cached_data which takes no args, a simple name is fine
-            safe_args = f"{args}_{kwargs}" if args or kwargs else "empty_args"
-            cache_key = f"{f.__name__}:{safe_args}"
-            
-            # Try Redis first
-            if redis_client:
-                try:
-                    cached = redis_client.get(cache_key)
-                    if cached:
-                        logger.info(f"Redis cache hit for {cache_key}")
-                        return json.loads(cached)
-                except Exception as e:
-                    logger.warning(f"Redis cache error: {e}")
-            
-            # Fallback to memory cache
-            if cache_key in memory_cache:
-                logger.info(f"Memory cache hit for {cache_key}")
-                return memory_cache[cache_key]
-            
-            # Execute function and cache result
-            result = f(*args, **kwargs)
-            
-            # Cache in Redis
-            if redis_client:
-                try:
-                    redis_client.setex(cache_key, timeout, json.dumps(result))
-                except Exception as e:
-                    logger.warning(f"Redis cache set error: {e}")
-            
-            # Cache in memory
-            memory_cache[cache_key] = result
-            
-            return result
-        return decorated_function
-    return decorator
+LAST_REFRESH_STATUS: Dict[str, Any] = {
+    "timestamp": None,
+    "status": "never",
+    "error": None,
+}
 
-@app.route('/favicon.ico')
-def favicon():
-    return send_from_directory(os.path.join(app.root_path, 'static'),
-                             'favicon.ico', mimetype='image/vnd.microsoft.icon')
 
-@cache_response(timeout=86400)
-def get_cached_data():
-    """Get cached fund data with improved error handling and performance"""
-    try:
-        logger.info("Starting to fetch fund data")
-        
-        # Use async function for better performance
-        results = asyncio.run(fetch_funds_data())
-        
-        if not results:
-            logger.error("No fund data could be fetched")
-            return {"error": "No data available", "funds": []}
-        
-        logger.info(f"Successfully fetched data for {len(results)} funds")
-        return {
-            "funds": results,
-            "timestamp": datetime.now().isoformat(),
-            "count": len(results)
+class User(UserMixin):
+    def __init__(self, user_id: str, email: str, name: str):
+        self.id = user_id
+        self.email = email
+        self.name = name
+
+
+@login_manager.user_loader
+def load_user(user_id: str):
+    if "user_email" in session:
+        return User(session.get("user_id"), session.get("user_email"), session.get("user_name", "User"))
+    return None
+
+
+def _cache_key(scope: str, as_of: Optional[datetime]) -> str:
+    as_of_key = as_of.strftime("%Y-%m-%d") if as_of else "latest"
+    return f"funds_cache:{scope}:{as_of_key}"
+
+
+def _parse_as_of(value: Optional[str]) -> Optional[datetime]:
+    if not value:
+        return None
+    for fmt in ("%Y-%m-%d", "%d-%m-%Y"):
+        try:
+            return datetime.strptime(value, fmt)
+        except ValueError:
+            continue
+    raise ValueError("Invalid as_of date. Use YYYY-MM-DD or DD-MM-YYYY")
+
+
+def clear_response_caches() -> None:
+    memory_cache.clear()
+    if redis_client:
+        for pattern in ("funds_cache:*", "get_cached_data:*"):
+            for key in redis_client.scan_iter(pattern):
+                redis_client.delete(key)
+
+
+def get_cached_data(scope: str = "all", as_of: Optional[datetime] = None, force_refresh: bool = False) -> Dict[str, Any]:
+    cache_key = _cache_key(scope, as_of)
+
+    if not force_refresh:
+        if redis_client:
+            try:
+                cached = redis_client.get(cache_key)
+                if cached:
+                    return json.loads(cached)
+            except Exception as exc:
+                logger.warning("Redis cache read error: %s", exc)
+
+        if cache_key in memory_cache:
+            return memory_cache[cache_key]
+
+    result = asyncio.run(fetch_funds_data(as_of_date=as_of, scope=scope))
+    funds = result.get("funds", [])
+    if not funds:
+        payload = {
+            "error": "No data available",
+            "funds": [],
+            "timestamp": datetime.utcnow().isoformat(),
+            "count": 0,
+            "comparison_anchor_date": result.get("comparison_anchor_date"),
+            "comparison_header_dates": result.get("comparison_header_dates", {}),
+            "scope": scope,
         }
-        
-    except Exception as e:
-        logger.error(f"Error in get_cached_data: {str(e)}")
-        logger.error(traceback.format_exc())
-        return {"error": str(e), "funds": []}
+    else:
+        payload = {
+            "funds": funds,
+            "timestamp": datetime.utcnow().isoformat(),
+            "count": len(funds),
+            "comparison_anchor_date": result.get("comparison_anchor_date"),
+            "comparison_header_dates": result.get("comparison_header_dates", {}),
+            "scope": scope,
+        }
 
-def process_fund_data(results):
-    """Process and format fund data for templates with improved performance"""
+    if redis_client:
+        try:
+            redis_client.setex(cache_key, redis_cache_ttl, json.dumps(payload))
+        except Exception as exc:
+            logger.warning("Redis cache set error: %s", exc)
+
+    memory_cache[cache_key] = payload
+    return payload
+
+
+def refresh_and_persist(trigger_type: str = "manual", scope: str = "all", as_of: Optional[datetime] = None) -> Dict[str, Any]:
+    run_id = history_store.start_refresh_run(trigger_type)
+    try:
+        clear_response_caches()
+        clear_data_caches()
+
+        payload = get_cached_data(scope=scope, as_of=as_of, force_refresh=True)
+        if payload.get("error"):
+            history_store.finish_refresh_run(run_id, status="failed", error=payload.get("error"), fund_count=0)
+            LAST_REFRESH_STATUS.update({"timestamp": datetime.utcnow().isoformat(), "status": "failed", "error": payload.get("error")})
+            return payload
+
+        history_store.save_snapshot(run_id, payload.get("funds", []))
+        history_store.finish_refresh_run(run_id, status="success", fund_count=len(payload.get("funds", [])))
+        LAST_REFRESH_STATUS.update({"timestamp": payload.get("timestamp"), "status": "success", "error": None})
+        return payload
+    except Exception as exc:
+        logger.error("Refresh failed: %s", exc)
+        logger.error(traceback.format_exc())
+        history_store.finish_refresh_run(run_id, status="failed", error=str(exc), fund_count=0)
+        LAST_REFRESH_STATUS.update({"timestamp": datetime.utcnow().isoformat(), "status": "failed", "error": str(exc)})
+        return {"error": str(exc), "funds": []}
+
+
+def process_fund_data(results: Dict[str, Any]):
     if not results or "funds" not in results:
         return []
-    
+
     funds_data = []
     for result in results["funds"]:
         if not result:
             continue
-            
+
         try:
-            # Format the data for template
             fund_info = {
-                "name": result["name"],
-                "code": result["code"],
-                "current_nav": f"{result['current_nav']:.2f}",
-                "current_date": result["current_date"],
-                "dates": result["dates"],
-                "returns": {},
+                "name": result.get("name", ""),
+                "code": result.get("code", ""),
+                "current_nav": f"{result['current_nav']:.2f}" if result.get("current_nav") is not None else None,
+                "current_date": result.get("current_date"),
+                "as_of_date": result.get("as_of_date"),
+                "period_source_dates": result.get("period_source_dates", {}),
+                "dates": result.get("dates", {}),
+                "returns": result.get("returns", {}),
                 "year_breakdown": result.get("year_breakdown", {}),
-                "consistency_score": result.get("consistency_score", 0),
-                "is_portfolio": result.get("is_portfolio", False)
+                "consistency_score": result.get("consistency_score"),
+                "score_components": result.get("score_components", {}),
+                "score_method_version": result.get("score_method_version", "v2_reweighted_missing"),
+                "data_completeness": result.get("data_completeness", 0),
+                "is_stale": bool(result.get("is_stale", False)),
+                "is_portfolio": bool(result.get("is_portfolio", False)),
             }
-            
-            # Format returns as numbers or 0 for sorting
-            for period, value in result["returns"].items():
-                if isinstance(value, (float, int)):
-                    fund_info["returns"][period] = value
-                else:
-                    fund_info["returns"][period] = 0
-            
             funds_data.append(fund_info)
-            
-        except Exception as e:
-            logger.error(f"Error processing fund data for {result.get('name', 'Unknown Fund')}: {str(e)}")
-    
+        except Exception as exc:
+            logger.error("Error processing fund data %s: %s", result.get("name", "Unknown"), exc)
+
     return funds_data
 
-@app.route('/')
+
+@app.route("/login")
+def login():
+    if current_user.is_authenticated:
+        return redirect(url_for("index"))
+    return render_template("login.html")
+
+
+@app.route("/auth/login")
+def auth_login():
+    redirect_uri = url_for("auth_callback", _external=True)
+    if "localhost" not in redirect_uri and "127.0.0.1" not in redirect_uri:
+        redirect_uri = redirect_uri.replace("http://", "https://")
+    return google.authorize_redirect(redirect_uri)
+
+
+@app.route("/auth/callback")
+def auth_callback():
+    try:
+        token = google.authorize_access_token()
+        user_info = token.get("userinfo")
+        if not user_info:
+            response = google.get("https://openidconnect.googleapis.com/v1/userinfo")
+            user_info = response.json()
+
+        email = str(user_info.get("email", "")).lower()
+        if email not in ALLOWED_USERS:
+            flash("Access denied: You are not authorized to view this application.", "error")
+            return redirect(url_for("login"))
+
+        user = User(str(user_info.get("sub", email)), email, user_info.get("name", "User"))
+        login_user(user)
+
+        session["user_id"] = user.id
+        session["user_email"] = user.email
+        session["user_name"] = user.name
+        session.permanent = True
+        return redirect(url_for("index"))
+    except Exception as exc:
+        logger.error("Auth failed: %s", exc)
+        flash(f"Authentication failed: {exc}", "error")
+        return redirect(url_for("login"))
+
+
+@app.route("/logout")
+@login_required
+def logout():
+    logout_user()
+    session.clear()
+    return redirect(url_for("login"))
+
+
+@app.route("/favicon.ico")
+def favicon():
+    return send_from_directory(os.path.join(app.root_path, "static"), "favicon.ico", mimetype="image/vnd.microsoft.icon")
+
+
+@app.route("/")
 @login_required
 def index():
-    """Main dashboard page"""
     try:
-        results = get_cached_data()
+        results = get_cached_data(scope="all")
         funds_data = process_fund_data(results)
-        
-        # Handle empty funds list
         if not funds_data:
-            return render_template('error.html', 
-                                 error_message="No fund data available",
-                                 details="Unable to fetch fund data from the API"), 500
-        
-        # Format timestamp for display
-        timestamp = results.get("timestamp", datetime.now().isoformat())
+            return render_template(
+                "error.html",
+                error_message="No fund data available",
+                details=results.get("error", "Unable to fetch fund data from API"),
+            ), 500
+
+        timestamp = results.get("timestamp", datetime.utcnow().isoformat())
         try:
             dt = datetime.fromisoformat(timestamp)
             last_updated = dt.strftime("%Y-%m-%d %H:%M:%S")
         except Exception:
             last_updated = timestamp
-        
-        return render_template('index.html', 
-                             funds=funds_data,
-                             last_updated=last_updated,
-                             fund_count=len(funds_data),
-                             deploy_time=APP_START_TIME)
-    except Exception as e:
-        logger.error(f"Error rendering index: {str(e)}")
-        logger.error(traceback.format_exc())
-        return render_template('error.html', 
-                             error_message="Error loading fund data",
-                             details=str(e)), 500
 
-@app.route('/api/funds')
+        return render_template(
+            "index.html",
+            funds=funds_data,
+            last_updated=last_updated,
+            fund_count=len(funds_data),
+            deploy_time=APP_START_TIME,
+            comparison_anchor_date=results.get("comparison_anchor_date"),
+            comparison_header_dates=results.get("comparison_header_dates", {}),
+        )
+    except Exception as exc:
+        logger.error("Error rendering index: %s", exc)
+        logger.error(traceback.format_exc())
+        return render_template("error.html", error_message="Error loading fund data", details=str(exc)), 500
+
+
+@app.route("/api/funds")
 @login_required
 def api_funds():
-    """API endpoint for fund data with improved formatting and performance"""
     try:
-        results = get_cached_data()
-        
-        if "error" in results:
+        scope = request.args.get("scope", "all").strip().lower()
+        if scope not in {"all", "portfolio", "research"}:
+            return jsonify({"error": "Invalid scope. Use all|portfolio|research"}), 400
+
+        as_of_param = request.args.get("as_of")
+        as_of_dt = _parse_as_of(as_of_param)
+
+        results = get_cached_data(scope=scope, as_of=as_of_dt)
+        if results.get("error"):
             return jsonify({"error": results["error"], "funds": []}), 500
-        
+
         funds_data = []
-        for idx, result in enumerate(results["funds"], 1):
-            if not result:
-                continue
-                
+        for idx, result in enumerate(results.get("funds", []), 1):
             fund = {
                 "id": str(idx),
-                "name": result["name"],
+                "name": result.get("name"),
                 "code": result.get("code", ""),
-                "nav": float(result["current_nav"]),
-                "returns1d": result["returns"].get("1day", 0) or 0,
-                "returns1w": result["returns"].get("1week", 0) or 0,
-                "returns1m": result["returns"].get("1month", 0) or 0,
-                "returns3m": result["returns"].get("3month", 0) or 0,
-                "returns6m": result["returns"].get("6month", 0) or 0,
-                "returns1y": result["returns"].get("1year", 0) or 0,
-                "returns2y": result["returns"].get("2year", 0) or 0,
-                "returns3y": result["returns"].get("3year", 0) or 0,
-                "returns5y": result["returns"].get("5year", 0) or 0,
-                "dates": result["dates"],
+                "nav": result.get("current_nav"),
+                "returns1d": result.get("returns", {}).get("1day"),
+                "returns1w": result.get("returns", {}).get("1week"),
+                "returns1m": result.get("returns", {}).get("1month"),
+                "returns3m": result.get("returns", {}).get("3month"),
+                "returns6m": result.get("returns", {}).get("6month"),
+                "returns1y": result.get("returns", {}).get("1year"),
+                "returns2y": result.get("returns", {}).get("2year"),
+                "returns3y": result.get("returns", {}).get("3year"),
+                "returns5y": result.get("returns", {}).get("5year"),
+                "dates": result.get("dates", {}),
+                "period_source_dates": result.get("period_source_dates", {}),
                 "current_date": result.get("current_date"),
+                "as_of_date": result.get("as_of_date"),
+                "data_completeness": result.get("data_completeness", 0),
+                "is_stale": bool(result.get("is_stale", False)),
+                "score_components": result.get("score_components", {}),
+                "score_method_version": result.get("score_method_version", "v2_reweighted_missing"),
                 "year_breakdown": result.get("year_breakdown", {}),
-                "consistency_score": result.get("consistency_score", 0),  # New Field
-                "is_portfolio": result.get("is_portfolio", False),
+                "consistency_score": result.get("consistency_score"),
+                "is_portfolio": bool(result.get("is_portfolio", False)),
                 "category": "Other",
-                "risk": "Medium"
+                "risk": "Medium",
             }
             funds_data.append(fund)
-        
-        return jsonify({
-            "funds": funds_data,
-            "timestamp": datetime.now().isoformat(),
-            "count": len(funds_data)
-        })
-        
-    except Exception as e:
-        logger.error(f"Error in API endpoint: {str(e)}")
-        return jsonify({"error": str(e), "funds": []}), 500
 
-@app.route('/api/refresh')
+        return jsonify(
+            {
+                "funds": funds_data,
+                "timestamp": results.get("timestamp"),
+                "count": len(funds_data),
+                "scope": scope,
+                "comparison_anchor_date": results.get("comparison_anchor_date"),
+                "comparison_header_dates": results.get("comparison_header_dates", {}),
+            }
+        )
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception as exc:
+        logger.error("Error in /api/funds: %s", exc)
+        logger.error(traceback.format_exc())
+        return jsonify({"error": str(exc), "funds": []}), 500
+
+
+@app.route("/api/funds/history/<code>")
+@login_required
+def api_fund_history(code: str):
+    range_key = request.args.get("range", "1y").lower()
+    if range_key not in {"1y", "3y", "5y"}:
+        return jsonify({"error": "Invalid range. Use 1y|3y|5y"}), 400
+
+    history = history_store.get_fund_history(str(code), range_key)
+    return jsonify({"code": str(code), "range": range_key, "count": len(history), "history": history})
+
+
+@app.route("/api/refresh", methods=["POST", "GET"])
 @login_required
 def refresh_data():
-    """Force refresh of cached data with improved performance"""
-    try:
-        # Clear caches safely without flushing all user sessions
-        memory_cache.clear()
-        if redis_client:
-            # Clear all keys associated with get_cached_data
-            for key in redis_client.scan_iter("get_cached_data:*"):
-                redis_client.delete(key)
-        
-        # Fetch fresh data
-        results = get_cached_data()
-        
-        if "error" in results:
-            return jsonify({"error": results["error"]}), 500
-        
-        return jsonify({
-            "message": "Data refreshed successfully",
-            "timestamp": datetime.now().isoformat(),
-            "count": len(results.get("funds", []))
-        })
-        
-    except Exception as e:
-        logger.error(f"Error refreshing data: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+    trigger = "manual_get" if request.method == "GET" else "manual_post"
+    payload = refresh_and_persist(trigger_type=trigger, scope="all")
+    if payload.get("error"):
+        return jsonify({"error": payload.get("error")}), 500
 
-import requests
+    response = {
+        "message": "Data refreshed successfully",
+        "timestamp": payload.get("timestamp"),
+        "count": len(payload.get("funds", [])),
+    }
+    if request.method == "GET":
+        response["warning"] = "GET /api/refresh is deprecated. Use POST /api/refresh."
+    return jsonify(response)
 
-# Funds Management
-@app.route('/api/funds/search')
+
+@app.route("/api/funds/search")
 @login_required
 def search_funds():
-    query = request.args.get('q', '')
+    query = request.args.get("q", "")
     if not query or len(query) < 3:
         return jsonify([])
     try:
@@ -415,266 +456,234 @@ def search_funds():
         if response.status_code == 200:
             return jsonify(response.json())
         return jsonify([])
-    except Exception as e:
-        logger.error(f"Error searching funds: {e}")
+    except Exception as exc:
+        logger.error("Error searching funds: %s", exc)
         return jsonify([]), 500
 
-@app.route('/api/funds', methods=['POST'])
+
+@app.route("/api/funds", methods=["POST"])
 @login_required
 def api_add_fund():
-    data = request.json
-    name = data.get('name')
-    code = data.get('code')
+    data = request.json or {}
+    name = data.get("name")
+    code = data.get("code")
     if not name or not code:
         return jsonify({"error": "Name and code required"}), 400
-        
+
     if add_fund(name, str(code)):
-        # Clear cache so next fetch gets new fund
-        memory_cache.clear()
-        if redis_client:
-            for key in redis_client.scan_iter("get_cached_data:*"):
-                redis_client.delete(key)
+        clear_response_caches()
+        clear_data_caches()
         return jsonify({"success": True, "message": "Fund added successfully"})
     return jsonify({"error": "Fund already exists or error adding"}), 400
 
-@app.route('/api/funds/<code>', methods=['DELETE'])
+
+@app.route("/api/funds/<code>", methods=["DELETE"])
 @login_required
 def api_remove_fund(code):
     if remove_fund(str(code)):
-        # Clear cache so next fetch reflects removal
-        memory_cache.clear()
-        if redis_client:
-            for key in redis_client.scan_iter("get_cached_data:*"):
-                redis_client.delete(key)
+        clear_response_caches()
+        clear_data_caches()
         return jsonify({"success": True, "message": "Fund removed successfully"})
     return jsonify({"error": "Fund not found or error removing"}), 400
 
-# Research Funds Management
-@app.route('/api/research-funds', methods=['POST'])
+
+@app.route("/api/research-funds", methods=["POST"])
 @login_required
 def api_add_research_fund():
-    data = request.json
-    name = data.get('name')
-    code = data.get('code')
+    data = request.json or {}
+    name = data.get("name")
+    code = data.get("code")
     if not name or not code:
         return jsonify({"error": "Name and code required"}), 400
 
     if add_research_fund(name, str(code)):
-        # Clear cache so next fetch gets new fund
-        memory_cache.clear()
-        if redis_client:
-            for key in redis_client.scan_iter("get_cached_data:*"):
-                redis_client.delete(key)
+        clear_response_caches()
+        clear_data_caches()
         return jsonify({"success": True, "message": "Fund added to research"})
     return jsonify({"error": "Fund already in research or error adding"}), 400
 
-@app.route('/api/research-funds/<code>', methods=['DELETE'])
+
+@app.route("/api/research-funds/<code>", methods=["DELETE"])
 @login_required
 def api_remove_research_fund(code):
     if remove_research_fund(str(code)):
-        # Clear cache so next fetch reflects removal
-        memory_cache.clear()
-        if redis_client:
-            for key in redis_client.scan_iter("get_cached_data:*"):
-                redis_client.delete(key)
+        clear_response_caches()
+        clear_data_caches()
         return jsonify({"success": True, "message": "Fund removed from research"})
     return jsonify({"error": "Fund not found in research or error removing"}), 400
 
-@app.route('/api/research-funds', methods=['GET'])
+
+@app.route("/api/research-funds", methods=["GET"])
 @login_required
 def api_get_research_funds():
-    """Get all research funds (raw list, not fetched data)"""
     return jsonify(load_research_funds())
 
-# Notes Management
-NOTES_FILE = os.path.join(DATA_DIR, 'notes.json')
-CSV_FILE = os.path.join(DATA_DIR, 'mutual_fund_returns.csv')
 
-# In-memory storage for Vercel
+NOTES_FILE = os.path.join(DATA_DIR, "notes.json")
 memory_notes = []
 
+
 def load_notes():
-    """Load notes from JSON file or memory"""
     if IS_VERCEL:
         return memory_notes
-        
     if not os.path.exists(NOTES_FILE):
         return []
     try:
-        with open(NOTES_FILE, 'r') as f:
-            return json.load(f)
-    except Exception as e:
-        logger.error(f"Error loading notes: {e}")
+        with open(NOTES_FILE, "r", encoding="utf-8") as handle:
+            return json.load(handle)
+    except Exception as exc:
+        logger.error("Error loading notes: %s", exc)
         return []
 
+
 def save_notes(notes):
-    """Save notes to JSON file or memory"""
     if IS_VERCEL:
         global memory_notes
         memory_notes = notes
         return True
-
     try:
-        with open(NOTES_FILE, 'w') as f:
-            json.dump(notes, f, indent=2)
+        with open(NOTES_FILE, "w", encoding="utf-8") as handle:
+            json.dump(notes, handle, indent=2)
         return True
-    except Exception as e:
-        logger.error(f"Error saving notes: {e}")
+    except Exception as exc:
+        logger.error("Error saving notes: %s", exc)
         return False
 
-# Scheduled Task for Data Refresh
-def scheduled_refresh():
-    """Function to be called by APScheduler"""
-    if redis_client:
-        # Use Redis lock to ensure only one worker runs this task
-        lock = redis_client.lock("refresh_lock", timeout=1800) # 30 minutes lock
-        if not lock.acquire(blocking=False):
-            logger.info("Another worker is already running scheduled refresh. Skipping.")
-            return
 
-    try:
-        logger.info("Starting scheduled data refresh...")
-        with app.app_context():
-            try:
-                # 1. Refresh Cache safely
-                memory_cache.clear()
-                if redis_client:
-                    for key in redis_client.scan_iter("get_cached_data:*"):
-                        redis_client.delete(key)
-                    
-                results = get_cached_data() # fetches fresh because cache is clear
-                
-                if "funds" not in results:
-                    logger.error("Scheduled refresh: No funds data fetched.")
-                    return
-
-                logger.info("Scheduled refresh completed successfully.")
-            except Exception as e:
-                logger.error(f"Scheduled refresh failed: {e}")
-                logger.error(traceback.format_exc())
-    finally:
-        if redis_client and 'lock' in locals():
-            try:
-                lock.release()
-            except Exception as e:
-                pass
-
-# Initialize Scheduler
-# Only start scheduler if not in debug mode (prevents double run with reloader)
-if not app.debug or os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
-    scheduler = BackgroundScheduler()
-    # Run every day at 12:30 AM IST
-    scheduler.add_job(func=scheduled_refresh, trigger="cron", hour=0, minute=30, timezone=pytz.timezone('Asia/Kolkata'))
-    # Trigger an immediate background refresh on startup to warm the cache
-    scheduler.add_job(func=scheduled_refresh)
-    scheduler.start()
-    logger.info("Scheduler started (12:30 AM daily and immediate startup run)")
-
-
-@app.route('/api/notes', methods=['GET'])
+@app.route("/api/notes", methods=["GET"])
 @login_required
 def get_notes():
-    """Get all notes"""
     return jsonify(load_notes())
 
-@app.route('/api/notes', methods=['POST'])
+
+@app.route("/api/notes", methods=["POST"])
 @login_required
 def add_note():
-    """Add a new note"""
     try:
         data = request.json
-        if not data or 'text' not in data or 'date' not in data:
+        if not data or "text" not in data or "date" not in data:
             return jsonify({"error": "Invalid data"}), 400
-            
+
         notes = load_notes()
-        notes.append({
-            "date": data['date'],
-            "text": data['text'],
-            "created_at": datetime.now().isoformat()
-        })
-        
+        notes.append({"date": data["date"], "text": data["text"], "created_at": datetime.utcnow().isoformat()})
         if save_notes(notes):
             return jsonify({"message": "Note added successfully", "notes": notes})
-        else:
-            return jsonify({"error": "Failed to save note"}), 500
-            
-    except Exception as e:
-        logger.error(f"Error adding note: {e}")
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "Failed to save note"}), 500
+    except Exception as exc:
+        logger.error("Error adding note: %s", exc)
+        return jsonify({"error": str(exc)}), 500
 
-@app.route('/api/notes/<int:index>', methods=['DELETE'])
+
+@app.route("/api/notes/<int:index>", methods=["DELETE"])
 @login_required
 def delete_note(index):
-    """Delete a note by index"""
     try:
         notes = load_notes()
         if 0 <= index < len(notes):
             notes.pop(index)
             if save_notes(notes):
                 return jsonify({"message": "Note deleted successfully", "notes": notes})
-            else:
-                return jsonify({"error": "Failed to save changes"}), 500
-        else:
-            return jsonify({"error": "Note not found"}), 404
-            
-    except Exception as e:
-        logger.error(f"Error deleting note: {e}")
-        return jsonify({"error": str(e)}), 500
+            return jsonify({"error": "Failed to save changes"}), 500
+        return jsonify({"error": "Note not found"}), 404
+    except Exception as exc:
+        logger.error("Error deleting note: %s", exc)
+        return jsonify({"error": str(exc)}), 500
 
-@app.route('/health')
-def health_check():
-    """Health check endpoint for monitoring"""
+
+def scheduled_refresh():
+    lock = None
+    if redis_client:
+        lock = redis_client.lock("refresh_lock", timeout=1800)
+        if not lock.acquire(blocking=False):
+            logger.info("Another worker is already running scheduled refresh. Skipping.")
+            return
+
     try:
-        # Check if we can fetch data
-        results = get_cached_data()
-        
+        logger.info("Starting scheduled refresh")
+        payload = refresh_and_persist(trigger_type="scheduled", scope="all")
+        if payload.get("error"):
+            logger.error("Scheduled refresh failed: %s", payload.get("error"))
+        else:
+            logger.info("Scheduled refresh completed. funds=%s", len(payload.get("funds", [])))
+    finally:
+        if lock:
+            try:
+                lock.release()
+            except Exception:
+                pass
+
+
+if not app.config.get("TESTING") and (not app.debug or os.environ.get("WERKZEUG_RUN_MAIN") == "true"):
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(func=scheduled_refresh, trigger="cron", hour=0, minute=30, timezone=pytz.timezone("Asia/Kolkata"))
+    scheduler.add_job(func=scheduled_refresh)
+    scheduler.start()
+    logger.info("Scheduler started (00:30 IST + startup warm refresh)")
+
+
+@app.route("/health")
+def health_check():
+    last_success = history_store.get_last_successful_refresh()
+
+    status = {
+        "status": "healthy",
+        "timestamp": datetime.utcnow().isoformat(),
+        "redis_connected": redis_client is not None,
+        "memory_cache_size": len(memory_cache),
+        "last_refresh": LAST_REFRESH_STATUS,
+        "last_successful_refresh": last_success,
+    }
+
+    if redis_client:
+        try:
+            redis_client.ping()
+        except Exception as exc:
+            status["status"] = "degraded"
+            status["redis_error"] = str(exc)
+
+    if LAST_REFRESH_STATUS.get("status") == "failed":
+        status["status"] = "degraded"
+
+    return jsonify(status)
+
+
+@app.route("/health/deep")
+def health_check_deep():
+    try:
+        results = get_cached_data(scope="all", force_refresh=False)
         health_status = {
-            "status": "healthy",
-            "timestamp": datetime.now().isoformat(),
+            "status": "healthy" if not results.get("error") else "degraded",
+            "timestamp": datetime.utcnow().isoformat(),
             "redis_connected": redis_client is not None,
             "funds_count": len(results.get("funds", [])),
-            "cache_size": len(memory_cache)
+            "cache_size": len(memory_cache),
+            "comparison_anchor_date": results.get("comparison_anchor_date"),
         }
-        
-        if "error" in results:
-            health_status["status"] = "degraded"
-            health_status["error"] = results["error"]
-        
+        if results.get("error"):
+            health_status["error"] = results.get("error")
         return jsonify(health_status)
-        
-    except Exception as e:
-        logger.error(f"Health check failed: {str(e)}")
-        return jsonify({
-            "status": "unhealthy",
-            "error": str(e),
-            "timestamp": datetime.now().isoformat()
-        }), 500
+    except Exception as exc:
+        logger.error("Deep health check failed: %s", exc)
+        return jsonify({"status": "unhealthy", "error": str(exc), "timestamp": datetime.utcnow().isoformat()}), 500
+
 
 @app.errorhandler(404)
-def not_found(error):
-    return render_template('error.html', 
-                         error_message="Page not found",
-                         details="The requested page does not exist"), 404
+def not_found(_error):
+    return render_template("error.html", error_message="Page not found", details="The requested page does not exist"), 404
+
 
 @app.errorhandler(500)
-def internal_error(error):
-    return render_template('error.html', 
-                         error_message="Internal server error",
-                         details="Something went wrong on our end"), 500
+def internal_error(_error):
+    return render_template("error.html", error_message="Internal server error", details="Something went wrong on our end"), 500
 
-if __name__ == '__main__':
-    # Create logs directory if it doesn't exist
-    if not os.path.exists('logs'):
-        os.makedirs('logs')
-    
-    # Check environment mode
-    flask_env = os.getenv('FLASK_ENV', 'development')
-    debug_mode = flask_env != 'production'
-    
+
+if __name__ == "__main__":
+    flask_env = os.getenv("FLASK_ENV", "development")
+    debug_mode = flask_env != "production"
+
     if debug_mode:
-        logger.info("Starting Flask in DEVELOPMENT mode (debug=True)")
+        logger.info("Starting Flask in DEVELOPMENT mode")
     else:
-        logger.info("Starting Flask in PRODUCTION mode (debug=False)")
-    
-    # Run the app with appropriate settings
-    app.run(debug=debug_mode, host='127.0.0.1', port=5000, use_reloader=debug_mode)
+        logger.info("Starting Flask in PRODUCTION mode")
+
+    app.run(debug=debug_mode, host="127.0.0.1", port=5000, use_reloader=debug_mode)

@@ -77,7 +77,7 @@
             refreshBtn.addEventListener('click', async () => {
                 try {
                     refreshBtn.classList.add('loading');
-                    const response = await fetch('/api/refresh');
+                    const response = await fetch('/api/refresh', { method: 'POST' });
                     if (response.ok) {
                         // Reload the page to show fresh data
                         window.location.reload();
@@ -389,11 +389,11 @@
 
                 // Update text to N/A
                 if (span.tagName === 'SPAN') {
-                    span.textContent = '—';
+                    span.textContent = 'N/A';
                     // Set to muted color
                     span.className = span.className.replace(/text-(success|danger|secondary)/, 'text-muted');
                 } else {
-                    cell.textContent = '—';
+                    cell.textContent = 'N/A';
                 }
 
                 // Update data-value for sorting

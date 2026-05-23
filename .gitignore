@@ -7,4 +7,6 @@ logs/
 __pycache__/
 *.pyc
 funds.json
+mf_history.db
+*.lock
 .cursor/
