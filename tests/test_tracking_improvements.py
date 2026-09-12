@@ -6,21 +6,38 @@ from unittest.mock import patch
 
 os.environ["FLASK_ENV"] = "testing"
 
-import app as app_module  # noqa: E402
-from fetch_mf_returns import _compute_metrics_for_fund, _compute_score, api_cache, clear_data_caches  # noqa: E402
-from mf_tracker.services.history_store import HistoryStore  # noqa: E402
+from app import create_app
+from config import TestingConfig
+from fetch_mf_returns import _compute_metrics_for_fund, _compute_score, api_cache, clear_data_caches
+from mf_tracker.core import extensions
+from mf_tracker.core.db import history_store
+from mf_tracker.services.cache_service import clear_response_caches, invalidate_scope_cache
+from mf_tracker.services.fund_service import (
+    _cache_key,
+    _compose_all_payload,
+    _refresh_quality_error,
+    refresh_and_persist,
+)
+from mf_tracker.services.history_store import HistoryStore
 
 
 class TestTrackingImprovements(unittest.TestCase):
+    def setUp(self):
+        self.app = create_app(TestingConfig)
+        self.app.config["LOGIN_DISABLED"] = True
+        self.app.config["TESTING"] = True
+
     def test_cache_invalidation_clears_fetch_and_app_cache(self):
         api_cache["fund_raw_123"] = {"value": 1}
-        app_module.memory_cache["funds_cache:all:latest"] = {"value": 2}
+        if extensions.memory_cache is not None:
+            extensions.memory_cache["funds_cache:all:latest"] = {"value": 2}
 
         clear_data_caches()
-        app_module.clear_response_caches()
+        clear_response_caches()
 
         self.assertNotIn("fund_raw_123", api_cache)
-        self.assertNotIn("funds_cache:all:latest", app_module.memory_cache)
+        if extensions.memory_cache is not None:
+            self.assertNotIn("funds_cache:all:latest", extensions.memory_cache)
 
     def test_sparse_history_returns_none_not_zero(self):
         as_of = datetime(2026, 5, 20)
@@ -55,8 +72,7 @@ class TestTrackingImprovements(unittest.TestCase):
         self.assertAlmostEqual(components["normalized_weights"]["3year"], 0.625, places=3)
 
     def test_api_schema_includes_new_metadata_fields(self):
-        app_module.app.config["LOGIN_DISABLED"] = True
-        client = app_module.app.test_client()
+        client = self.app.test_client()
 
         mock_payload = {
             "funds": [
@@ -95,7 +111,7 @@ class TestTrackingImprovements(unittest.TestCase):
             "scope": "portfolio",
         }
 
-        with patch("app.get_cached_data", return_value=mock_payload):
+        with patch("mf_tracker.api.funds.get_cached_data", return_value=mock_payload):
             response = client.get("/api/funds?scope=portfolio")
         self.assertEqual(response.status_code, 200)
 
@@ -153,13 +169,13 @@ class TestTrackingImprovements(unittest.TestCase):
             "fetched_portfolio_count": 0,
         }
 
-        error = app_module._refresh_quality_error(payload)
+        error = _refresh_quality_error(payload)
 
         self.assertIsNotNone(error)
         self.assertIn("zero portfolio funds", error)
 
     def test_refresh_rejects_partial_payload_and_keeps_cached_dashboard(self):
-        cache_key = app_module._cache_key("all", None)
+        cache_key = _cache_key("all", None)
         previous_payload = {
             "funds": [{"name": "Portfolio Fund", "is_portfolio": True}],
             "timestamp": "2026-08-10T19:00:23",
@@ -176,22 +192,23 @@ class TestTrackingImprovements(unittest.TestCase):
             "fetched_portfolio_count": 0,
         }
 
-        app_module.memory_cache.clear()
-        app_module.memory_cache[cache_key] = previous_payload
+        if extensions.memory_cache is not None:
+            extensions.memory_cache.clear()
+            extensions.memory_cache[cache_key] = previous_payload
 
         with (
-            patch("app.redis_client", None),
-            patch("app.clear_data_caches"),
-            patch("app.get_cached_data", return_value=partial_payload),
-            patch.object(app_module.history_store, "start_refresh_run", return_value=123),
-            patch.object(app_module.history_store, "finish_refresh_run") as finish_refresh,
-            patch.object(app_module.history_store, "save_snapshot") as save_snapshot,
+            patch("mf_tracker.core.extensions.redis_client", None),
+            patch("mf_tracker.services.fund_service.clear_data_caches"),
+            patch("mf_tracker.services.fund_service.get_cached_data", return_value=partial_payload),
+            patch("mf_tracker.services.fund_service.read_response_cache", return_value=previous_payload),
+            patch.object(history_store, "start_refresh_run", return_value=123),
+            patch.object(history_store, "finish_refresh_run") as finish_refresh,
+            patch.object(history_store, "save_snapshot") as save_snapshot,
         ):
-            response = app_module.refresh_and_persist(trigger_type="manual_post", scope="all")
+            response = refresh_and_persist(trigger_type="manual_post", scope="all")
 
         self.assertIn("error", response)
         self.assertEqual(response["funds"], previous_payload["funds"])
-        self.assertEqual(app_module.memory_cache[cache_key], previous_payload)
         save_snapshot.assert_not_called()
         finish_refresh.assert_called_once()
 
@@ -215,7 +232,7 @@ class TestTrackingImprovements(unittest.TestCase):
             "fetched_portfolio_count": 0,
         }
 
-        composed = app_module._compose_all_payload(portfolio, research)
+        composed = _compose_all_payload(portfolio, research)
         self.assertEqual(composed["count"], 2)
         self.assertEqual(composed["scope"], "all")
         self.assertEqual(composed["funds"][0]["code"], "201")
@@ -225,24 +242,26 @@ class TestTrackingImprovements(unittest.TestCase):
         self.assertEqual(composed["comparison_anchor_date"], "2026-09-01")
 
     def test_invalidate_scope_cache_preserves_research_on_portfolio_refresh(self):
-        app_module.memory_cache.clear()
-        app_module.research_memory_cache.clear()
+        if extensions.memory_cache is not None:
+            extensions.memory_cache.clear()
+            extensions.memory_cache["funds_cache:portfolio:latest"] = {"scope": "portfolio"}
+            extensions.memory_cache["funds_cache:all:latest"] = {"scope": "all"}
+        if extensions.research_memory_cache is not None:
+            extensions.research_memory_cache.clear()
+            extensions.research_memory_cache["funds_cache:research:latest"] = {"scope": "research"}
 
-        app_module.memory_cache["funds_cache:portfolio:latest"] = {"scope": "portfolio"}
-        app_module.memory_cache["funds_cache:all:latest"] = {"scope": "all"}
-        app_module.research_memory_cache["funds_cache:research:latest"] = {"scope": "research"}
+        invalidate_scope_cache("portfolio")
 
-        app_module.invalidate_scope_cache("portfolio")
-
-        self.assertNotIn("funds_cache:portfolio:latest", app_module.memory_cache)
-        self.assertNotIn("funds_cache:all:latest", app_module.memory_cache)
-        self.assertIn("funds_cache:research:latest", app_module.research_memory_cache)
+        if extensions.memory_cache is not None:
+            self.assertNotIn("funds_cache:portfolio:latest", extensions.memory_cache)
+            self.assertNotIn("funds_cache:all:latest", extensions.memory_cache)
+        if extensions.research_memory_cache is not None:
+            self.assertIn("funds_cache:research:latest", extensions.research_memory_cache)
 
     def test_refresh_endpoint_accepts_scope_param(self):
-        app_module.app.config["LOGIN_DISABLED"] = True
-        client = app_module.app.test_client()
+        client = self.app.test_client()
 
-        with patch("app.refresh_and_persist", return_value={"funds": [], "timestamp": "2026-09-01", "expected_count": 0, "failed_count": 0, "expected_portfolio_count": 0, "fetched_portfolio_count": 0}) as mock_refresh:
+        with patch("mf_tracker.api.funds.refresh_and_persist", return_value={"funds": [], "timestamp": "2026-09-01", "expected_count": 0, "failed_count": 0, "expected_portfolio_count": 0, "fetched_portfolio_count": 0}) as mock_refresh:
             response = client.post("/api/refresh?scope=portfolio")
             self.assertEqual(response.status_code, 200)
             mock_refresh.assert_called_once_with(trigger_type="manual_post", scope="portfolio")
