@@ -223,3 +223,38 @@ class TestRegressionAPI:
 
         res_notes = auth_client.get("/api/notes")
         assert res_notes.status_code == 302
+
+    def test_wsgi_entrypoint_and_procfile_contract(self):
+        """
+        REGRESSION GUARD:
+        Verify that app.py exports a module-level 'app' instance as required by:
+        1. Railway / Gunicorn Procfile ('gunicorn app:app')
+        2. Vercel deployment ('app.py')
+        This test prevents 'Failed to find attribute app in app' deployment crashes.
+        """
+        import importlib
+        import os
+        from flask import Flask
+
+        # 1. Verify Procfile configuration references a valid module and attribute
+        repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        procfile_path = os.path.join(repo_root, "Procfile")
+        assert os.path.exists(procfile_path), "Procfile must exist for Railway deployment"
+
+        with open(procfile_path, "r", encoding="utf-8") as f:
+            procfile_content = f.read()
+
+        assert "gunicorn app:app" in procfile_content, "Procfile must specify 'gunicorn app:app'"
+
+        # 2. Verify dynamic import of module 'app' has attribute 'app'
+        app_module = importlib.import_module("app")
+        assert hasattr(app_module, "app"), (
+            "Module 'app' must export an 'app' attribute at module level! "
+            "Without this, Gunicorn on Railway fails with: "
+            "'Failed to find attribute app in app'."
+        )
+
+        wsgi_app = getattr(app_module, "app")
+        assert isinstance(wsgi_app, Flask), "Exported 'app' must be an instance of Flask"
+        assert callable(wsgi_app), "Exported 'app' must be a callable WSGI application"
+
