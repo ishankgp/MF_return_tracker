@@ -22,10 +22,18 @@ class Config:
     # Cache settings
     MEMORY_CACHE_SIZE = int(os.getenv('MEMORY_CACHE_SIZE', 200))
     MEMORY_CACHE_TTL = int(os.getenv('MEMORY_CACHE_TTL', 600))  # 10 minutes
+    RESEARCH_CACHE_TTL = int(os.getenv('RESEARCH_CACHE_TTL', 35 * 86400))  # 35 days for monthly research cache
     API_CACHE_TTL = int(os.getenv('API_CACHE_TTL', MEMORY_CACHE_TTL))
+
+    # Refresh Schedule settings
+    PORTFOLIO_REFRESH_HOUR = int(os.getenv('PORTFOLIO_REFRESH_HOUR', 0))
+    PORTFOLIO_REFRESH_MINUTE = int(os.getenv('PORTFOLIO_REFRESH_MINUTE', 30))
+    RESEARCH_REFRESH_DAY = int(os.getenv('RESEARCH_REFRESH_DAY', 1))
+    RESEARCH_REFRESH_HOUR = int(os.getenv('RESEARCH_REFRESH_HOUR', 1))
+    RESEARCH_REFRESH_MINUTE = int(os.getenv('RESEARCH_REFRESH_MINUTE', 0))
     
     # API settings
-    API_TIMEOUT = int(os.getenv('API_TIMEOUT', 15))
+    API_TIMEOUT = int(os.getenv('API_TIMEOUT', 60))
     API_RATE_LIMIT = int(os.getenv('API_RATE_LIMIT', 3))  # requests per second
     API_RATE_PERIOD = int(os.getenv('API_RATE_PERIOD', 1))  # seconds
     

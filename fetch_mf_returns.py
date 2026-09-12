@@ -45,6 +45,13 @@ SCORE_METHOD_VERSION = "v2_reweighted_missing"
 
 STALE_THRESHOLD_DAYS = int(os.getenv("STALE_THRESHOLD_DAYS", "3"))
 COMPARISON_COVERAGE_THRESHOLD = float(os.getenv("COMPARISON_COVERAGE_THRESHOLD", "0.8"))
+API_TIMEOUT_SECONDS = int(os.getenv("API_TIMEOUT", "60"))
+API_RETRY_ATTEMPTS = max(1, int(os.getenv("API_RETRY_ATTEMPTS", "3")))
+API_RETRY_BACKOFF_SECONDS = float(os.getenv("API_RETRY_BACKOFF_SECONDS", "1.5"))
+API_RATE_LIMIT = int(os.getenv("API_RATE_LIMIT", "3"))
+API_RATE_PERIOD = float(os.getenv("API_RATE_PERIOD", "1"))
+MAX_CONCURRENT_REQUESTS = int(os.getenv("MAX_CONCURRENT_REQUESTS", "10"))
+CONNECTION_POOL_SIZE = int(os.getenv("CONNECTION_POOL_SIZE", "5"))
 
 API_CACHE_TTL = int(os.getenv("API_CACHE_TTL", os.getenv("REDIS_TTL", "600")))
 API_CACHE_MAXSIZE = int(os.getenv("API_CACHE_MAXSIZE", "500"))
@@ -345,18 +352,60 @@ async def _fetch_fund_nav_data_async(session: aiohttp.ClientSession, fund: Dict[
         return cached
 
     url = f"https://api.mfapi.in/mf/{fund['code']}"
-    try:
-        async with throttler:
-            async with session.get(url, timeout=aiohttp.ClientTimeout(total=15)) as response:
-                if response.status != 200:
-                    logger.error("HTTP %s for %s", response.status, fund.get("name"))
-                    return None
-                payload = await response.json()
-    except asyncio.TimeoutError:
-        logger.error("Timeout while fetching data for %s", fund.get("name"))
-        return None
-    except Exception as exc:
-        logger.error("Error fetching %s: %s", fund.get("name"), exc)
+    payload = None
+    retryable_statuses = {429, 500, 502, 503, 504}
+
+    for attempt in range(1, API_RETRY_ATTEMPTS + 1):
+        try:
+            async with throttler:
+                async with session.get(url, timeout=aiohttp.ClientTimeout(total=API_TIMEOUT_SECONDS)) as response:
+                    if response.status == 200:
+                        payload = await response.json()
+                        break
+
+                    if response.status not in retryable_statuses or attempt == API_RETRY_ATTEMPTS:
+                        logger.error("HTTP %s for %s", response.status, fund.get("name"))
+                        return None
+
+                    logger.warning(
+                        "HTTP %s for %s; retrying attempt %s/%s",
+                        response.status,
+                        fund.get("name"),
+                        attempt + 1,
+                        API_RETRY_ATTEMPTS,
+                    )
+        except asyncio.TimeoutError:
+            if attempt == API_RETRY_ATTEMPTS:
+                logger.error(
+                    "Timeout while fetching data for %s after %s attempts",
+                    fund.get("name"),
+                    API_RETRY_ATTEMPTS,
+                )
+                return None
+            logger.warning(
+                "Timeout while fetching data for %s; retrying attempt %s/%s",
+                fund.get("name"),
+                attempt + 1,
+                API_RETRY_ATTEMPTS,
+            )
+        except aiohttp.ClientError as exc:
+            if attempt == API_RETRY_ATTEMPTS:
+                logger.error("Network error fetching %s after %s attempts: %s", fund.get("name"), API_RETRY_ATTEMPTS, exc)
+                return None
+            logger.warning(
+                "Network error fetching %s: %s; retrying attempt %s/%s",
+                fund.get("name"),
+                exc,
+                attempt + 1,
+                API_RETRY_ATTEMPTS,
+            )
+        except Exception as exc:
+            logger.error("Error fetching %s: %s", fund.get("name"), exc)
+            return None
+
+        await asyncio.sleep(API_RETRY_BACKOFF_SECONDS * (2 ** (attempt - 1)))
+
+    if payload is None:
         return None
 
     nav_data = payload.get("data")
@@ -434,8 +483,10 @@ def _build_fund_universe(scope: str) -> List[Dict[str, object]]:
 
 
 async def fetch_all_funds_async(as_of_date: Optional[datetime] = None, scope: str = "all") -> Dict[str, object]:
-    throttler = Throttler(rate_limit=3, period=1)
+    throttler = Throttler(rate_limit=API_RATE_LIMIT, period=API_RATE_PERIOD)
     fund_universe = _build_fund_universe(scope)
+    expected_count = len(fund_universe)
+    expected_portfolio_count = sum(1 for fund in fund_universe if fund.get("is_portfolio"))
 
     if not fund_universe:
         return {
@@ -443,21 +494,42 @@ async def fetch_all_funds_async(as_of_date: Optional[datetime] = None, scope: st
             "comparison_anchor_date": None,
             "comparison_header_dates": {},
             "scope": scope,
+            "expected_count": 0,
+            "failed_count": 0,
+            "failed_funds": [],
+            "expected_portfolio_count": 0,
+            "fetched_portfolio_count": 0,
         }
 
     async with aiohttp.ClientSession(
-        timeout=aiohttp.ClientTimeout(total=30),
-        connector=aiohttp.TCPConnector(limit=10, limit_per_host=5),
+        timeout=aiohttp.ClientTimeout(total=max(API_TIMEOUT_SECONDS * API_RETRY_ATTEMPTS + 10, 30)),
+        connector=aiohttp.TCPConnector(limit=MAX_CONCURRENT_REQUESTS, limit_per_host=CONNECTION_POOL_SIZE),
     ) as session:
         tasks = [_fetch_fund_nav_data_async(session, fund, throttler) for fund in fund_universe]
         raw_results = await asyncio.gather(*tasks, return_exceptions=True)
 
     raw_funds: List[Dict[str, object]] = []
+    failed_funds: List[Dict[str, object]] = []
     for index, item in enumerate(raw_results):
+        source_fund = fund_universe[index]
         if isinstance(item, Exception):
-            logger.error("Exception for fund %s: %s", fund_universe[index].get("name"), item)
+            logger.error("Exception for fund %s: %s", source_fund.get("name"), item)
+            failed_funds.append(
+                {
+                    "name": source_fund.get("name"),
+                    "code": str(source_fund.get("code", "")),
+                    "is_portfolio": bool(source_fund.get("is_portfolio")),
+                }
+            )
             continue
         if item is None:
+            failed_funds.append(
+                {
+                    "name": source_fund.get("name"),
+                    "code": str(source_fund.get("code", "")),
+                    "is_portfolio": bool(source_fund.get("is_portfolio")),
+                }
+            )
             continue
         raw_funds.append(item)
 
@@ -467,10 +539,16 @@ async def fetch_all_funds_async(as_of_date: Optional[datetime] = None, scope: st
             "comparison_anchor_date": None,
             "comparison_header_dates": {},
             "scope": scope,
+            "expected_count": expected_count,
+            "failed_count": len(failed_funds),
+            "failed_funds": failed_funds,
+            "expected_portfolio_count": expected_portfolio_count,
+            "fetched_portfolio_count": 0,
         }
 
     anchor_date = as_of_date or _compute_common_anchor_date(raw_funds, COMPARISON_COVERAGE_THRESHOLD)
     metrics = [_compute_metrics_for_fund(raw, anchor_date) for raw in raw_funds]
+    fetched_portfolio_count = sum(1 for fund in metrics if fund.get("is_portfolio"))
 
     metrics.sort(
         key=lambda fund: (fund.get("consistency_score") is not None, fund.get("consistency_score") or float("-inf")),
@@ -482,6 +560,11 @@ async def fetch_all_funds_async(as_of_date: Optional[datetime] = None, scope: st
         "comparison_anchor_date": anchor_date.strftime("%d-%m-%Y") if anchor_date else None,
         "comparison_header_dates": _build_header_dates(anchor_date) if anchor_date else {},
         "scope": scope,
+        "expected_count": expected_count,
+        "failed_count": len(failed_funds),
+        "failed_funds": failed_funds,
+        "expected_portfolio_count": expected_portfolio_count,
+        "fetched_portfolio_count": fetched_portfolio_count,
     }
 
 

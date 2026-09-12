@@ -143,7 +143,110 @@ class TestTrackingImprovements(unittest.TestCase):
             self.assertEqual(len(history), 1)
             self.assertEqual(history[0]["code"], "123456")
 
+    def test_refresh_quality_rejects_zero_portfolio_payload(self):
+        payload = {
+            "scope": "all",
+            "funds": [{"name": "Research Fund", "is_portfolio": False}],
+            "expected_count": 80,
+            "failed_count": 79,
+            "expected_portfolio_count": 11,
+            "fetched_portfolio_count": 0,
+        }
+
+        error = app_module._refresh_quality_error(payload)
+
+        self.assertIsNotNone(error)
+        self.assertIn("zero portfolio funds", error)
+
+    def test_refresh_rejects_partial_payload_and_keeps_cached_dashboard(self):
+        cache_key = app_module._cache_key("all", None)
+        previous_payload = {
+            "funds": [{"name": "Portfolio Fund", "is_portfolio": True}],
+            "timestamp": "2026-08-10T19:00:23",
+            "count": 1,
+        }
+        partial_payload = {
+            "funds": [{"name": "Research Fund", "is_portfolio": False}],
+            "timestamp": "2026-08-10T21:59:23",
+            "count": 1,
+            "scope": "all",
+            "expected_count": 80,
+            "failed_count": 79,
+            "expected_portfolio_count": 11,
+            "fetched_portfolio_count": 0,
+        }
+
+        app_module.memory_cache.clear()
+        app_module.memory_cache[cache_key] = previous_payload
+
+        with (
+            patch("app.redis_client", None),
+            patch("app.clear_data_caches"),
+            patch("app.get_cached_data", return_value=partial_payload),
+            patch.object(app_module.history_store, "start_refresh_run", return_value=123),
+            patch.object(app_module.history_store, "finish_refresh_run") as finish_refresh,
+            patch.object(app_module.history_store, "save_snapshot") as save_snapshot,
+        ):
+            response = app_module.refresh_and_persist(trigger_type="manual_post", scope="all")
+
+        self.assertIn("error", response)
+        self.assertEqual(response["funds"], previous_payload["funds"])
+        self.assertEqual(app_module.memory_cache[cache_key], previous_payload)
+        save_snapshot.assert_not_called()
+        finish_refresh.assert_called_once()
+
+    def test_compose_all_payload_blends_and_ranks(self):
+        portfolio = {
+            "funds": [{"name": "Fund P", "code": "101", "consistency_score": 50.0, "is_portfolio": True}],
+            "comparison_anchor_date": "2026-09-01",
+            "comparison_header_dates": {"1day": "2026-08-31"},
+            "expected_count": 1,
+            "failed_count": 0,
+            "expected_portfolio_count": 1,
+            "fetched_portfolio_count": 1,
+        }
+        research = {
+            "funds": [{"name": "Fund R", "code": "201", "consistency_score": 80.0, "is_portfolio": False}],
+            "comparison_anchor_date": "2026-08-01",
+            "comparison_header_dates": {"1day": "2026-07-31"},
+            "expected_count": 1,
+            "failed_count": 0,
+            "expected_portfolio_count": 0,
+            "fetched_portfolio_count": 0,
+        }
+
+        composed = app_module._compose_all_payload(portfolio, research)
+        self.assertEqual(composed["count"], 2)
+        self.assertEqual(composed["scope"], "all")
+        self.assertEqual(composed["funds"][0]["code"], "201")
+        self.assertFalse(composed["funds"][0]["is_portfolio"])
+        self.assertEqual(composed["funds"][1]["code"], "101")
+        self.assertTrue(composed["funds"][1]["is_portfolio"])
+        self.assertEqual(composed["comparison_anchor_date"], "2026-09-01")
+
+    def test_invalidate_scope_cache_preserves_research_on_portfolio_refresh(self):
+        app_module.memory_cache.clear()
+        app_module.research_memory_cache.clear()
+
+        app_module.memory_cache["funds_cache:portfolio:latest"] = {"scope": "portfolio"}
+        app_module.memory_cache["funds_cache:all:latest"] = {"scope": "all"}
+        app_module.research_memory_cache["funds_cache:research:latest"] = {"scope": "research"}
+
+        app_module.invalidate_scope_cache("portfolio")
+
+        self.assertNotIn("funds_cache:portfolio:latest", app_module.memory_cache)
+        self.assertNotIn("funds_cache:all:latest", app_module.memory_cache)
+        self.assertIn("funds_cache:research:latest", app_module.research_memory_cache)
+
+    def test_refresh_endpoint_accepts_scope_param(self):
+        app_module.app.config["LOGIN_DISABLED"] = True
+        client = app_module.app.test_client()
+
+        with patch("app.refresh_and_persist", return_value={"funds": [], "timestamp": "2026-09-01", "expected_count": 0, "failed_count": 0, "expected_portfolio_count": 0, "fetched_portfolio_count": 0}) as mock_refresh:
+            response = client.post("/api/refresh?scope=portfolio")
+            self.assertEqual(response.status_code, 200)
+            mock_refresh.assert_called_once_with(trigger_type="manual_post", scope="portfolio")
+
 
 if __name__ == "__main__":
     unittest.main()
-
