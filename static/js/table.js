@@ -33,109 +33,133 @@ export function compareSortableValues(aCell, bCell, ascending) {
     if (b.missing) return -1;
 
     if (typeof a.value === 'number' && typeof b.value === 'number') {
-        return ascending ? b.value - a.value : a.value - b.value;
+        return ascending ? a.value - b.value : b.value - a.value;
     }
 
     return ascending
-        ? b.value.toString().localeCompare(a.value.toString())
-        : a.value.toString().localeCompare(b.value.toString());
+        ? a.value.toString().localeCompare(b.value.toString())
+        : b.value.toString().localeCompare(a.value.toString());
 }
 
-export function initTableSorting() {
-    const table = document.getElementById('fundTable');
-    if (!table) return;
+const portfolioTableIds = ['fundTable', 'shortTermTable', 'yearlyTable', 'summaryTable'];
+const tableSorts = new WeakMap();
+const categoryStorageKey = 'portfolioCategory';
 
-    const headers = table.querySelectorAll('th.sortable');
-    let lastSortedColumn = null;
+function detailRow(row) {
+    const target = row.getAttribute('data-bs-target');
+    return target ? document.getElementById(target.slice(1)) : null;
+}
 
-    const sortTable = debounce(function (header) {
-        const column = header.cellIndex;
-        const tbody = table.querySelector('tbody');
-        const allRows = Array.from(tbody.querySelectorAll('tr'));
-        const isAscending = header.classList.contains('asc');
-
-        const mainRows = allRows.filter(row => row.classList.contains('fund-row'));
-
-        headers.forEach(h => {
-            h.classList.remove('asc', 'desc');
-            const icon = h.querySelector('i');
-            if (icon) icon.className = 'bi bi-arrow-down-up';
-        });
-
-        header.classList.toggle('asc', !isAscending);
-        header.classList.toggle('desc', isAscending);
-        const icon = header.querySelector('i');
-        if (icon) {
-            icon.className = isAscending ? 'bi bi-arrow-down' : 'bi bi-arrow-up';
-        }
-
-        const sortedPairs = mainRows.map(mainRow => {
-            const nextRow = mainRow.nextElementSibling;
-            const accordionRow = (nextRow && nextRow.classList.contains('accordion-collapse')) ? nextRow : null;
-
-            return {
-                mainRow: mainRow,
-                accordionRow: accordionRow,
-                valueCell: mainRow.cells[column]
-            };
-        }).sort((a, b) => compareSortableValues(a.valueCell, b.valueCell, isAscending));
-
-        const fragment = document.createDocumentFragment();
-        sortedPairs.forEach(pair => {
-            fragment.appendChild(pair.mainRow);
-            if (pair.accordionRow) {
-                fragment.appendChild(pair.accordionRow);
-            }
-        });
-        tbody.appendChild(fragment);
-
-        lastSortedColumn = header;
-    }, 200);
-
-    headers.forEach(header => {
-        header.addEventListener('click', () => sortTable(header));
+function sortPortfolioTable(table) {
+    const state = tableSorts.get(table);
+    if (!state) return;
+    const rows = Array.from(table.tBodies[0].children).filter(row => row.hasAttribute('data-portfolio-fund'));
+    const visible = rows.filter(row => !row.hidden);
+    visible.sort((a, b) => compareSortableValues(a.cells[state.column], b.cells[state.column], state.ascending));
+    const fragment = document.createDocumentFragment();
+    [...visible, ...rows.filter(row => row.hidden)].forEach(row => {
+        fragment.appendChild(row);
+        const detail = detailRow(row);
+        if (detail) fragment.appendChild(detail);
     });
+    // Empty-state rows are never included in sorting.
+    table.tBodies[0].prepend(fragment);
 }
 
-export function setupGenericTableSorting(tableId) {
-    const table = document.getElementById(tableId);
+function installSorting(table, selector) {
     if (!table) return;
-
-    const headers = table.querySelectorAll('.sortable-header');
-
+    const headers = table.querySelectorAll(selector);
     headers.forEach(header => {
-        header.addEventListener('click', function () {
-            const column = parseInt(this.getAttribute('data-column'));
-            const tbody = table.querySelector('tbody');
-            const rows = Array.from(tbody.querySelectorAll('tr'));
-            const isAscending = this.classList.contains('asc');
-
+        header.tabIndex = 0;
+        header.setAttribute('aria-sort', 'none');
+        const sort = () => {
+            const previous = tableSorts.get(table);
+            const column = Number(header.dataset.column ?? header.cellIndex);
+            const ascending = previous?.header === header ? !previous.ascending : false;
+            tableSorts.set(table, { header, column, ascending });
             headers.forEach(h => {
                 h.classList.remove('asc', 'desc');
+                h.setAttribute('aria-sort', 'none');
                 const icon = h.querySelector('i');
                 if (icon) icon.className = 'bi bi-arrow-down-up';
             });
-
-            this.classList.toggle('asc', !isAscending);
-            this.classList.toggle('desc', isAscending);
-            const icon = this.querySelector('i');
-            if (icon) {
-                icon.className = isAscending ? 'bi bi-arrow-down' : 'bi bi-arrow-up';
+            header.classList.add(ascending ? 'asc' : 'desc');
+            header.setAttribute('aria-sort', ascending ? 'ascending' : 'descending');
+            const icon = header.querySelector('i');
+            if (icon) icon.className = ascending ? 'bi bi-arrow-up' : 'bi bi-arrow-down';
+            sortPortfolioTable(table);
+        };
+        header.addEventListener('click', sort);
+        header.addEventListener('keydown', event => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                sort();
             }
-
-            const sortedRows = rows.sort((a, b) => {
-                const aCell = a.cells[column];
-                const bCell = b.cells[column];
-
-                if (!aCell || !bCell) return 0;
-                return compareSortableValues(aCell, bCell, isAscending);
-            });
-
-            const fragment = document.createDocumentFragment();
-            sortedRows.forEach(row => fragment.appendChild(row));
-            tbody.appendChild(fragment);
         });
     });
+}
+
+export function initTableSorting() {
+    installSorting(document.getElementById('fundTable'), 'th.sortable');
+}
+
+export function setupGenericTableSorting(tableId) {
+    installSorting(document.getElementById(tableId), '.sortable-header');
+}
+
+export function initPortfolioCategoryFilter() {
+    const buttons = document.querySelectorAll('[data-portfolio-category]');
+    if (!buttons.length) return;
+    const tables = portfolioTableIds.map(id => document.getElementById(id)).filter(Boolean);
+    const validCategories = ['all', 'midcap', 'smallcap'];
+    let selected = 'all';
+    try {
+        const saved = sessionStorage.getItem(categoryStorageKey);
+        if (validCategories.includes(saved)) selected = saved;
+    } catch { /* Filtering still works when browser storage is unavailable. */ }
+
+    const apply = category => {
+        buttons.forEach(button => {
+            const active = button.dataset.portfolioCategory === category;
+            button.classList.toggle('active', active);
+            button.setAttribute('aria-pressed', String(active));
+        });
+        tables.forEach(table => {
+            const rows = Array.from(table.tBodies[0].children).filter(row => row.hasAttribute('data-portfolio-fund'));
+            let count = 0;
+            rows.forEach(row => {
+                row.hidden = category !== 'all' && row.dataset.category !== category;
+                if (!row.hidden) count++;
+                const detail = detailRow(row);
+                if (detail) {
+                    detail.hidden = row.hidden;
+                    if (row.hidden) bootstrap.Collapse.getOrCreateInstance(detail, { toggle: false }).hide();
+                }
+            });
+            let empty = table.tBodies[0].querySelector(':scope > .portfolio-empty-row');
+            if (!empty) {
+                empty = document.createElement('tr');
+                empty.className = 'portfolio-empty-row';
+                const cell = document.createElement('td');
+                cell.colSpan = Math.max(...Array.from(table.tHead.rows, row => Array.from(row.cells).reduce((n, c) => n + c.colSpan, 0)));
+                cell.className = 'text-center text-muted py-4';
+                cell.textContent = 'No portfolio funds match this category.';
+                empty.appendChild(cell);
+                table.tBodies[0].appendChild(empty);
+            }
+            empty.hidden = count !== 0;
+            if (table.id === 'fundTable') {
+                document.getElementById('portfolioFilterCount').textContent = `${count} of ${rows.length} funds`;
+            }
+            sortPortfolioTable(table);
+        });
+    };
+    buttons.forEach(button => button.addEventListener('click', () => {
+        selected = button.dataset.portfolioCategory;
+        try { sessionStorage.setItem(categoryStorageKey, selected); } catch { /* Optional persistence. */ }
+        apply(selected);
+    }));
+    apply(selected);
 }
 
 function updateCell(cell, value) {
@@ -233,6 +257,7 @@ export function recalculateReturns() {
             updateCellNA(cagr2yCell);
         }
     });
+    sortPortfolioTable(summaryTable);
 }
 
 export function initViewControls() {
@@ -262,38 +287,18 @@ export function initViewControls() {
         });
     }
 
-    const expandAllBtn = document.getElementById('expandAllBtn');
-    if (expandAllBtn) {
-        expandAllBtn.addEventListener('click', function () {
-            const collapseElements = document.querySelectorAll('.accordion-collapse');
-            collapseElements.forEach(element => {
-                // Using global bootstrap
-                const bsCollapse = new bootstrap.Collapse(element, { toggle: false });
-                bsCollapse.show();
-            });
-
-            const accordionRows = document.querySelectorAll('.accordion-button');
-            accordionRows.forEach(row => {
-                row.setAttribute('aria-expanded', 'true');
-            });
+    const setDetailsExpanded = expanded => {
+        document.querySelectorAll('#fundTable .fund-row').forEach(row => {
+            if (expanded && row.hidden) return;
+            const detail = detailRow(row);
+            if (!detail) return;
+            const collapse = bootstrap.Collapse.getOrCreateInstance(detail, { toggle: false });
+            if (expanded) collapse.show();
+            else collapse.hide();
         });
-    }
-
-    const collapseAllBtn = document.getElementById('collapseAllBtn');
-    if (collapseAllBtn) {
-        collapseAllBtn.addEventListener('click', function () {
-            const collapseElements = document.querySelectorAll('.accordion-collapse');
-            collapseElements.forEach(element => {
-                const bsCollapse = new bootstrap.Collapse(element, { toggle: false });
-                bsCollapse.hide();
-            });
-
-            const accordionRows = document.querySelectorAll('.accordion-button');
-            accordionRows.forEach(row => {
-                row.setAttribute('aria-expanded', 'false');
-            });
-        });
-    }
+    };
+    document.getElementById('expandAllBtn')?.addEventListener('click', () => setDetailsExpanded(true));
+    document.getElementById('collapseAllBtn')?.addEventListener('click', () => setDetailsExpanded(false));
 
     document.querySelectorAll('.year-filter').forEach(checkbox => {
         checkbox.addEventListener('change', recalculateReturns);

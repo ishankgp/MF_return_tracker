@@ -6,9 +6,12 @@ from flask import Blueprint, render_template, current_app
 from flask_login import login_required, current_user
 
 from mf_tracker.services.fund_service import get_cached_data, process_fund_data
+from mf_tracker.web.presentation import fund_category
 
 logger = logging.getLogger(__name__)
 web_bp = Blueprint("web", __name__)
+
+web_bp.add_app_template_filter(fund_category, "fund_category")
 
 APP_START_TIME = datetime.now().strftime("%b %d, %H:%M:%S")
 

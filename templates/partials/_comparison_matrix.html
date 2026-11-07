@@ -75,10 +75,11 @@
                                         </thead>
                                         <tbody>
                                             {% for fund in funds if fund.is_portfolio %}
-                                            <tr>
+                                            {% set category = fund.name|fund_category %}
+                                            <tr data-portfolio-fund data-category="{{ category.key }}">
                                                 <td class="sticky-start bg-white" data-value="{{ fund.name }}">
-                                                    <strong>{{
-                                                        fund.name }}</strong>
+                                                    {% include "partials/_fund_category_badge.html" %}
+                                                    <strong>{{ fund.name }}</strong>
                                                 </td>
                                                 <td class="text-end {% if fund.returns['1day'] is none %}text-muted{% elif fund.returns['1day'] >= 0 %}text-success{% else %}text-danger{% endif %}"
                                                     data-value="{{ fund.returns['1day'] if fund.returns['1day'] is not none else '' }}">
@@ -195,10 +196,11 @@
                                         </thead>
                                         <tbody>
                                             {% for fund in funds if fund.is_portfolio %}
-                                            <tr>
+                                            {% set category = fund.name|fund_category %}
+                                            <tr data-portfolio-fund data-category="{{ category.key }}">
                                                 <td class="sticky-start bg-white" data-value="{{ fund.name }}">
-                                                    <strong>{{
-                                                        fund.name }}</strong>
+                                                    {% include "partials/_fund_category_badge.html" %}
+                                                    <strong>{{ fund.name }}</strong>
                                                 </td>
                                                 {% if fund.year_breakdown.get('5year') %}
                                                 <td class="text-end {% if fund.year_breakdown['5year']['year1'] >= 0 %}text-success fw-bold{% else %}text-danger fw-bold{% endif %}"
@@ -325,10 +327,11 @@
                                         </thead>
                                         <tbody>
                                             {% for fund in funds if fund.is_portfolio %}
-                                            <tr>
+                                            {% set category = fund.name|fund_category %}
+                                            <tr data-portfolio-fund data-category="{{ category.key }}">
                                                 <td class="sticky-start bg-white" data-value="{{ fund.name }}">
-                                                    <strong>{{
-                                                        fund.name }}</strong>
+                                                    {% include "partials/_fund_category_badge.html" %}
+                                                    <strong>{{ fund.name }}</strong>
                                                 </td>
                                                 {% if fund.year_breakdown.get('5year') %}
                                                 <td class="text-end total-abs-2y"

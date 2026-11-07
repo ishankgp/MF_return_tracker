@@ -53,13 +53,14 @@
                                 </thead>
                                 <tbody>
                                     {% for fund in funds if fund.is_portfolio %}
+                                    {% set category = fund.name|fund_category %}
                                     <!-- Main row - clickable -->
-                                    <tr class="fund-row clickable-row" data-bs-toggle="collapse"
+                                    <tr class="fund-row clickable-row" data-portfolio-fund data-category="{{ category.key }}" data-bs-toggle="collapse"
                                         data-bs-target="#collapse-{{ loop.index }}" aria-expanded="false"
                                         tabindex="0">
                                         <td class="fund-name-cell">
                                             <i class="bi bi-chevron-right accordion-icon me-2"></i>
-                                            <span class="fund-name">{{ fund.name }}</span>
+                                            <span class="portfolio-fund-label">{% include "partials/_fund_category_badge.html" %}<span class="fund-name">{{ fund.name }}</span></span>
                                         </td>
                                         <td>
                                             <span class="amfi-code">{{ fund.code }}</span>

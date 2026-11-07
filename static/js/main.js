@@ -1,7 +1,7 @@
 import { showToast } from './ui.js';
 import { refreshData } from './api.js';
 import { initNotes } from './notes.js';
-import { initTableSorting, setupGenericTableSorting, initViewControls } from './table.js';
+import { initTableSorting, setupGenericTableSorting, initViewControls, initPortfolioCategoryFilter } from './table.js';
 import { initFundsManagement } from './funds.js';
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setupGenericTableSorting('yearlyTable');
     setupGenericTableSorting('summaryTable');
     initViewControls();
+    initPortfolioCategoryFilter();
     initFundsManagement();
 
     const refreshBtn = document.getElementById('refreshBtn');

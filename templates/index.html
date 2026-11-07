@@ -76,6 +76,14 @@
                                     <i class="bi bi-grid-3x3-gap me-1"></i>Comparison Matrix
                                 </label>
                             </div>
+                            <div class="portfolio-category-controls">
+                                <div class="btn-group" role="group" aria-label="Filter portfolio by fund category">
+                                    <button type="button" class="btn btn-outline-primary btn-sm active" data-portfolio-category="all" aria-pressed="true">All</button>
+                                    <button type="button" class="btn btn-outline-primary btn-sm" data-portfolio-category="midcap" aria-pressed="false">Midcap</button>
+                                    <button type="button" class="btn btn-outline-primary btn-sm" data-portfolio-category="smallcap" aria-pressed="false">Smallcap</button>
+                                </div>
+                                <span id="portfolioFilterCount" class="text-muted small" role="status" aria-live="polite"></span>
+                            </div>
                             <div class="btn-group toolbar-actions" role="group" id="expandCollapseButtons">
                                 <button class="btn btn-outline-secondary btn-sm" id="expandAllBtn">
                                     <i class="bi bi-chevron-double-down me-1"></i>Expand All
